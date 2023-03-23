@@ -666,5 +666,437 @@ void cpu_interpret(CPU *cpu)
         case 0x40:
             cpu_rti(IMPLIED);
             break;
+        case 0x41:
+            cpu_eor(DIRECT_SHORT_X);
+            break;
+        case 0x42:
+            cpu_wdm(IMMEDIATE);
+            break;
+        case 0x43:
+            cpu_eor(STACK_S);
+            break;
+        case 0x44:
+            cpu_mvp(SOURCE_DEST);
+            break;
+        case 0x45:
+            cpu_eor(DIRECT);
+            break;
+        case 0x46:
+            cpu_lsr(DIRECT);
+            break;
+        case 0x47:
+            cpu_eor(DIRECT_LONG);
+            break;
+        case 0x48:
+            cpu_pha(IMPLIED);
+            break;
+        case 0x49:
+            cpu_eor(IMMEDIATE);
+            break;
+        case 0x4A:
+            cpu_lsr(ACCUMULATOR);
+            break;
+        case 0x4B:
+            cpu_phk(IMPLIED);
+            break;
+        case 0x4C:
+            cpu_jmp(ABSOLUTE);
+            break;
+        case 0x4D:
+            cpu_eor(ABSOLUTE);
+            break;
+        case 0x4E:
+            cpu_lsr(ABSOLUTE);
+            break;
+        case 0x4F:
+            cpu_eor(LONG);
+            break;
+        case 0x50:
+            cpu_bvc(RELATIVE_8);
+            break;
+        case 0x51:
+            cpu_eor(DIRECT_SHORT_Y);
+            break;
+        case 0x52:
+            cpu_eor(DIRECT_SHORT);
+            break;
+        case 0x53:
+            cpu_eor(STACK_S_Y);
+            break;
+        case 0x54:
+            cpu_mvn(SOURCE_DEST);
+            break;
+        case 0x55:
+            cpu_eor(DIRECT_X);
+            break;
+        case 0x56:
+            cpu_lsr(DIRECT_X);
+            break;
+        case 0x57:
+            cpu_eor(DIRECT_LONG_Y);
+            break;
+        case 0x58:
+            cpu_cli(IMPLIED);
+            break;
+        case 0x59:
+            cpu_eor(ABSOLUTE_Y);
+            break;
+        case 0x5A:
+            cpu_phy(IMPLIED);
+            break;
+        case 0x5B:
+            cpu_tcd(IMPLIED);
+            break;
+        case 0x5C:
+            cpu_jmp(LONG);
+            break;
+        case 0x5D:
+            cpu_eor(ABSOLUTE_X);
+            break;
+        case 0x5E:
+            cpu_lsr(ABSOLUTE_X);
+            break;
+        case 0x5F:
+            cpu_eor(LONG_X);
+            break;
+        case 0x60:
+            cpu_rts(IMPLIED);
+            break;
+        case 0x61:
+            cpu_adc(DIRECT_SHORT_X);
+            break;
+        case 0x62:
+            cpu_per(IMMEDIATE);
+            break;
+        case 0x63:
+            cpu_adc(STACK_S);
+            break;
+        case 0x64:
+            cpu_stz(DIRECT);
+            break;
+        case 0x65:
+            cpu_adc(DIRECT);
+            break;
+        case 0x66:
+            cpu_ror(DIRECT);
+            break;
+        case 0x67:
+            cpu_adc(DIRECT_LONG);
+            break;
+        case 0x68:
+            cpu_pla(IMPLIED);
+            break;
+        case 0x69:
+            cpu_adc(IMMEDIATE);
+            break;
+        case 0x6A:
+            cpu_ror(ACCUMULATOR);
+            break;
+        case 0x6B:
+            cpu_rtl(IMPLIED);
+            break;
+        case 0x6C:
+            cpu_jmp(ABSOLUTE_JMP_LONG);
+            break;
+        case 0x6D:
+            cpu_adc(ABSOLUTE);
+            break;
+        case 0x6E:
+            cpu_ror(ABSOLUTE);
+            break;
+        case 0x6F:
+            cpu_adc(LONG);
+            break;
+        case 0x70:
+            cpu_bvs(RELATIVE_8);
+            break;
+        case 0x71:
+            cpu_adc(DIRECT_SHORT_Y);
+            break;
+        case 0x72:
+            cpu_adc(DIRECT_SHORT);
+            break;
+        case 0x73:
+            cpu_adc(STACK_S_Y);
+            break;
+        case 0x74:
+            cpu_stz(DIRECT_X);
+            break;
+        case 0x75:
+            cpu_adc(DIRECT_X);
+            break;
+        case 0x76:
+            cpu_ror(DIRECT_X);
+            break;
+        case 0x77:
+            cpu_adc(DIRECT_LONG_Y);
+            break;
+        case 0x78:
+            cpu_sei(IMPLIED);
+            break;
+        case 0x79:
+            cpu_adc(ABSOLUTE_Y);
+            break;
+        case 0x7A:
+            cpu_ply(IMPLIED);
+            break;
+        case 0x7B:
+            cpu_tdc(IMPLIED);
+            break;
+        case 0x7C:
+            cpu_jmp(ABSOLUTE_JMP_X);
+            break;
+        case 0x7D:
+            cpu_adc(ABSOLUTE_X);
+            break;
+        case 0x7E:
+            cpu_ror(ABSOLUTE_X);
+            break;
+        case 0x7F:
+            cpu_adc(LONG_X);
+            break;
+        case 0x80:
+            cpu_bra(RELATIVE_8);
+            break;
+        case 0x81:
+            cpu_sta(DIRECT_SHORT_X);
+            break;
+        case 0x82:
+            cpu_brl(RELATIVE_16);
+            break;
+        case 0x83:
+            cpu_sta(STACK_S);
+            break;
+        case 0x84:
+            cpu_sty(DIRECT);
+            break;
+        case 0x85:
+            cpu_sta(DIRECT);
+            break;
+        case 0x86:
+            cpu_stx(DIRECT);
+            break;
+        case 0x87:
+            cpu_sta(DIRECT_LONG);
+            break;
+        case 0x88:
+            cpu_dey(IMPLIED);
+            break;
+        case 0x89:
+            cpu_bit(IMMEDIATE);
+            break;
+        case 0x8A:
+            cpu_txa(IMPLIED);
+            break;
+        case 0x8B:
+            cpu_phb(IMPLIED);
+            break;
+        case 0x8C:
+            cpu_sty(ABSOLUTE);
+            break;
+        case 0x8D:
+            cpu_sta(ABSOLUTE);
+            break;
+        case 0x8E:
+            cpu_stx(ABSOLUTE);
+            break;
+        case 0x8F:
+            cpu_sta(LONG);
+            break;
+        case 0x90:
+            cpu_bcc(RELATIVE_8);
+            break;
+        case 0x91:
+            cpu_sta(DIRECT_SHORT_Y);
+            break;
+        case 0x92:
+            cpu_sta(DIRECT_SHORT);
+            break;
+        case 0x93:
+            cpu_sta(STACK_S_Y);
+            break;
+        case 0x94:
+            cpu_sty(DIRECT_X);
+            break;
+        case 0x95:
+            cpu_sta(DIRECT_X);
+            break;
+        case 0x96:
+            cpu_stx(DIRECT_Y);
+            break;
+        case 0x97:
+            cpu_sta(DIRECT_LONG_Y);
+            break;
+        case 0x98:
+            cpu_tya(IMPLIED);
+            break;
+        case 0x99:
+            cpu_sta(ABSOLUTE_Y);
+            break;
+        case 0x9A:
+            cpu_txs(IMPLIED);
+            break;
+        case 0x9B:
+            cpu_txy(IMPLIED);
+            break;
+        case 0x9C:
+            cpu_stz(ABSOLUTE);
+            break;
+        case 0x9D:
+            cpu_sta(ABSOLUTE_X);
+            break;
+        case 0x9E:
+            cpu_stz(ABSOLUTE_X);
+            break;
+        case 0x9F:
+            cpu_sta(LONG_X);
+            break;
+        case 0xA0:
+            cpu_ldy(IMMEDIATE);
+            break;
+        case 0xA1:
+            cpu_lda(DIRECT_SHORT_X);
+            break;
+        case 0xA2:
+            cpu_ldx(IMMEDIATE);
+            break;
+        case 0xA3:
+            cpu_lda(STACK_S);
+            break;
+        case 0xA4:
+            cpu_ldy(DIRECT);
+            break;
+        case 0xA5:
+            cpu_lda(DIRECT);
+            break;
+        case 0xA6:
+            cpu_ldx(DIRECT);
+            break;
+        case 0xA7:
+            cpu_lda(DIRECT_LONG);
+            break;
+        case 0xA8:
+            cpu_tay(IMPLIED);
+            break;
+        case 0xA9:
+            cpu_lda(IMMEDIATE);
+            break;
+        case 0xAA:
+            cpu_tax(IMPLIED);
+            break;
+        case 0xAB:
+            cpu_plb(IMPLIED);
+            break;
+        case 0xAC:
+            cpu_ldy(ABSOLUTE);
+            break;
+        case 0xAD:
+            cpu_lda(ABSOLUTE);
+            break;
+        case 0xAE:
+            cpu_ldx(ABSOLUTE);
+            break;
+        case 0xAF:
+            cpu_lda(LONG);
+            break;
+        case 0xB0:
+            cpu_bcs(RELATIVE_8);
+            break;
+        case 0xB1:
+            cpu_lda(DIRECT_SHORT_Y);
+            break;
+        case 0xB2:
+            cpu_lda(DIRECT_SHORT);
+            break;
+        case 0xB3:
+            cpu_lda(STACK_S_Y);
+            break;
+        case 0xB4:
+            cpu_ldy(DIRECT_X);
+            break;
+        case 0xB5:
+            cpu_lda(DIRECT_X);
+            break;
+        case 0xB6:
+            cpu_ldx(DIRECT_Y);
+            break;
+        case 0xB7:
+            cpu_lda(DIRECT_LONG_Y);
+            break;
+        case 0xB8:
+            cpu_clv(IMPLIED);
+            break;
+        case 0xB9:
+            cpu_lda(ABSOLUTE_Y);
+            break;
+        case 0xBA:
+            cpu_tsx(IMPLIED);
+            break;
+        case 0xBB:
+            cpu_tyx(IMPLIED);
+            break;
+        case 0xBC:
+            cpu_ldy(ABSOLUTE_X);
+            break;
+        case 0xBD:
+            cpu_lda(ABSOLUTE_X);
+            break;
+        case 0xBE:
+            cpu_ldx(ABSOLUTE_Y);
+            break;
+        case 0xBF:
+            cpu_lda(LONG_X);
+            break;
+        case 0xC0:
+            cpu_cpy(IMMEDIATE);
+            break;
+        case 0xC1:
+            cpu_cmp(DIRECT_SHORT_X);
+            break;
+        case 0xC2:
+            
+            break;
+        case 0xC3:
+            cpu_cmp(STACK_S);
+            break;
+        case 0xC4:
+
+            break;
+        case 0xC5:
+            cpu_cmp(DIRECT);
+            break;
+        case 0xC6:
+
+            break;
+        case 0xC7:
+            cpu_cmp(DIRECT_LONG);
+            break;
+        case 0xC8:
+
+            break;
+        case 0xC9:
+            cpu_cmp(IMMEDIATE);
+            break;
+        case 0xCA:
+
+            break;
+        case 0xCB:
+
+            break;
+        case 0xCC:
+
+            break;
+        case 0xCD:
+            cpu_cmp(ABSOLUTE);
+            break;
+        case 0xCE:
+
+            break;
+        case 0xCF:
+            cpu_cmp(LONG);
+            break;
+        case 0xD0:
+
+            break;
     }
 }
