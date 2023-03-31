@@ -6,6 +6,6 @@
 
 int main(int argc, char *argv[])
 {
-    printf("program ran with no errors!\n");
+    printf("program ran with NO ERRORS!\n");
     return 0;
 }
