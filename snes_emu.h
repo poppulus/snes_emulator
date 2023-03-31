@@ -62,8 +62,8 @@ extern unsigned short cpu_get_operand_address(CPU *cpu, enum AddressingMode mode
 extern unsigned short cpu_mem_read_u16(CPU*, unsigned short pos);
 extern void cpu_mem_write_u16(CPU*, unsigned short pos, unsigned short data);
 
-extern void cpu_adc(enum AddressingMode);
-extern void cpu_sbc(enum AddressingMode);
+extern void cpu_adc(enum AddressingMode, CPU*);
+extern void cpu_sbc(enum AddressingMode, CPU*);
 
 extern void cpu_cmp(enum AddressingMode, CPU *cpu, unsigned short);
 extern void cpu_cpx(enum AddressingMode, CPU *cpu, unsigned short);
@@ -193,7 +193,9 @@ extern void cpu_set_zero_flag(unsigned char*, unsigned short);
 extern void cpu_set_idx_zero_flag(unsigned char*, unsigned short);
 extern void cpu_set_mem_zero_flag(unsigned char*, unsigned short);
 
-extern void cpu_set_negative(unsigned char *status, unsigned short result);
+//extern void cpu_set_negative(unsigned char *status, unsigned short result);
+extern void cpu_set_negative_8bit(unsigned char *status, unsigned char result);
+extern void cpu_set_negative_16bit(unsigned char *status, unsigned short result);
 
 extern void cpu_set_mem_negative(unsigned char*, unsigned short);
 extern void cpu_set_idx_negative(unsigned char*, unsigned short);

@@ -1,5 +1,5 @@
-#include <GL/glew.h>
-#include <GL/glut.h>
+//#include <GL/glew.h>
+//#include <GL/glut.h>
 #include "snes_emu.h"
 
 #include <stdio.h>
