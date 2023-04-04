@@ -47,78 +47,79 @@ typedef struct
 {
     unsigned int    cycles;
 
-    unsigned short  wram[WRAM_SIZE];
-
     unsigned short  register_a, register_x, register_y, 
                     register_direct, program_counter, stack_pointer;
 
-    unsigned char   data_bank, program_bank, status;
+    unsigned char   wram[WRAM_SIZE], data_bank, program_bank, status;
 
     unsigned char   emulation_mode:1;
 } CPU;
 
-extern unsigned short cpu_get_operand_address(CPU *cpu, enum AddressingMode mode);
+extern unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode);
 
-extern unsigned short cpu_mem_read_u16(CPU*, unsigned short pos);
-extern void cpu_mem_write_u16(CPU*, unsigned short pos, unsigned short data);
+extern unsigned char cpu_mem_read_u8(CPU*, unsigned int pos);
+extern void cpu_mem_write_u8(CPU*, unsigned int pos, unsigned char data);
+
+extern unsigned short cpu_mem_read_u16(CPU*, unsigned int pos);
+extern void cpu_mem_write_u16(CPU*, unsigned int pos, unsigned short data);
 
 extern void cpu_adc(enum AddressingMode, CPU*);
 extern void cpu_sbc(enum AddressingMode, CPU*);
 
-extern void cpu_cmp(enum AddressingMode, CPU *cpu, unsigned short);
-extern void cpu_cpx(enum AddressingMode, CPU *cpu, unsigned short);
-extern void cpu_cpy(enum AddressingMode, CPU *cpu, unsigned short);
+extern void cpu_cmp(enum AddressingMode, CPU*);
+extern void cpu_cpx(enum AddressingMode, CPU*);
+extern void cpu_cpy(enum AddressingMode, CPU*);
 
-extern void cpu_dec(enum AddressingMode, CPU*, unsigned short);
+extern void cpu_dec(enum AddressingMode, CPU*);
 extern void cpu_dex(enum AddressingMode, CPU*);
 extern void cpu_dey(enum AddressingMode, CPU*);
 
-extern void cpu_inc(enum AddressingMode, CPU*, unsigned short);
+extern void cpu_inc(enum AddressingMode, CPU*);
 extern void cpu_inx(enum AddressingMode, CPU*);
 extern void cpu_iny(enum AddressingMode, CPU*);
 
-extern void cpu_and(enum AddressingMode, CPU*, unsigned short);
-extern void cpu_eor(enum AddressingMode, CPU*, unsigned short);
-extern void cpu_ora(enum AddressingMode, CPU*, unsigned short);
+extern void cpu_and(enum AddressingMode, CPU*);
+extern void cpu_eor(enum AddressingMode, CPU*);
+extern void cpu_ora(enum AddressingMode, CPU*);
 
-extern void cpu_bit(enum AddressingMode, CPU*, unsigned short);
+extern void cpu_bit(enum AddressingMode, CPU*);
 
-extern void cpu_trb(enum AddressingMode, CPU*, unsigned short*);
-extern void cpu_tsb(enum AddressingMode, CPU*, unsigned short*);
+extern void cpu_trb(enum AddressingMode, CPU*);
+extern void cpu_tsb(enum AddressingMode, CPU*);
 
-extern void cpu_asl(enum AddressingMode);
-extern void cpu_lsr(enum AddressingMode);
-extern void cpu_rol(enum AddressingMode);
-extern void cpu_ror(enum AddressingMode);
+extern void cpu_asl(enum AddressingMode, CPU*);
+extern void cpu_lsr(enum AddressingMode, CPU*);
+extern void cpu_rol(enum AddressingMode, CPU*);
+extern void cpu_ror(enum AddressingMode, CPU*);
 
-extern void cpu_bcc(enum AddressingMode);
-extern void cpu_bcs(enum AddressingMode);
-extern void cpu_beq(enum AddressingMode);
-extern void cpu_bmi(enum AddressingMode);
-extern void cpu_bne(enum AddressingMode);
-extern void cpu_bpl(enum AddressingMode);
-extern void cpu_bra(enum AddressingMode);
-extern void cpu_bvc(enum AddressingMode);
-extern void cpu_bvs(enum AddressingMode);
+extern void cpu_bcc(enum AddressingMode, CPU*);
+extern void cpu_bcs(enum AddressingMode, CPU*);
+extern void cpu_beq(enum AddressingMode, CPU*);
+extern void cpu_bmi(enum AddressingMode, CPU*);
+extern void cpu_bne(enum AddressingMode, CPU*);
+extern void cpu_bpl(enum AddressingMode, CPU*);
+extern void cpu_bra(enum AddressingMode, CPU*);
+extern void cpu_bvc(enum AddressingMode, CPU*);
+extern void cpu_bvs(enum AddressingMode, CPU*);
 
-extern void cpu_brl(enum AddressingMode);
+extern void cpu_brl(enum AddressingMode, CPU*);
 
-extern void cpu_jmp(enum AddressingMode);
-extern void cpu_jsl(enum AddressingMode);
-extern void cpu_jsr(enum AddressingMode);
+extern void cpu_jmp(enum AddressingMode, CPU*);
+extern void cpu_jsl(enum AddressingMode, CPU*);
+extern void cpu_jsr(enum AddressingMode, CPU*);
 
-extern void cpu_rtl(enum AddressingMode);
-extern void cpu_rts(enum AddressingMode);
+extern void cpu_rtl(enum AddressingMode, CPU*);
+extern void cpu_rts(enum AddressingMode, CPU*);
 
-extern void cpu_brk(enum AddressingMode);
-extern void cpu_cop(enum AddressingMode);
+extern void cpu_brk(enum AddressingMode, CPU*);
+extern void cpu_cop(enum AddressingMode, CPU*);
 
 extern void cpu_abt(enum AddressingMode);
 extern void cpu_irq(enum AddressingMode);
 extern void cpu_nmi(enum AddressingMode);
 extern void cpu_rst(enum AddressingMode);
 
-extern void cpu_rti(enum AddressingMode);
+extern void cpu_rti(enum AddressingMode, CPU*);
 
 extern void cpu_clc(enum AddressingMode, unsigned char*);
 extern void cpu_cld(enum AddressingMode, unsigned char*);
@@ -128,17 +129,17 @@ extern void cpu_sec(enum AddressingMode, unsigned char*);
 extern void cpu_sed(enum AddressingMode, unsigned char*);
 extern void cpu_sei(enum AddressingMode, unsigned char*);
 
-extern void cpu_rep(enum AddressingMode, CPU*, unsigned char);
-extern void cpu_sep(enum AddressingMode, CPU*, unsigned char);
+extern void cpu_rep(enum AddressingMode, CPU*);
+extern void cpu_sep(enum AddressingMode, CPU*);
 
-extern void cpu_lda(enum AddressingMode, CPU*, unsigned short);
-extern void cpu_ldx(enum AddressingMode, CPU*, unsigned short);
-extern void cpu_ldy(enum AddressingMode, CPU*, unsigned short);
+extern void cpu_lda(enum AddressingMode, CPU*);
+extern void cpu_ldx(enum AddressingMode, CPU*);
+extern void cpu_ldy(enum AddressingMode, CPU*);
 
-extern void cpu_sta(enum AddressingMode, CPU*, unsigned short);
-extern void cpu_stx(enum AddressingMode, CPU*, unsigned short);
-extern void cpu_sty(enum AddressingMode, CPU*, unsigned short);
-extern void cpu_stz(enum AddressingMode, CPU*, unsigned short);
+extern void cpu_sta(enum AddressingMode, CPU*);
+extern void cpu_stx(enum AddressingMode, CPU*);
+extern void cpu_sty(enum AddressingMode, CPU*);
+extern void cpu_stz(enum AddressingMode, CPU*);
 
 extern void cpu_mvn(enum AddressingMode);
 extern void cpu_mvp(enum AddressingMode);
@@ -188,12 +189,12 @@ extern void cpu_xce(enum AddressingMode, CPU*);
 
 extern void cpu_set_overflow_flag(unsigned char*, unsigned short);
 
-extern void cpu_set_zero_flag(unsigned char*, unsigned short);
+extern void cpu_set_zero_flag_u8(unsigned char*, unsigned char);
+extern void cpu_set_zero_flag_u16(unsigned char*, unsigned short);
 
 extern void cpu_set_idx_zero_flag(unsigned char*, unsigned short);
 extern void cpu_set_mem_zero_flag(unsigned char*, unsigned short);
 
-//extern void cpu_set_negative(unsigned char *status, unsigned short result);
 extern void cpu_set_negative_8bit(unsigned char *status, unsigned char result);
 extern void cpu_set_negative_16bit(unsigned char *status, unsigned short result);
 
