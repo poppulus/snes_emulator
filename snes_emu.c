@@ -7,11 +7,11 @@ unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode)
 
 unsigned char cpu_mem_read_u8(CPU *cpu, unsigned int pos)
 {
-    return 0;
+    return cpu->wram[pos];
 }
 void cpu_mem_write_u8(CPU *cpu, unsigned int pos, unsigned char data)
 {
-
+    cpu->wram[pos] = data;
 }
 
 unsigned short cpu_mem_read_u16(CPU *cpu, unsigned int pos)
@@ -861,7 +861,11 @@ void cpu_jmp(enum AddressingMode mode, CPU *cpu)
 }
 void cpu_jsl(enum AddressingMode mode, CPU *cpu)
 {
-
+    cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->program_bank);
+    cpu->stack_pointer -= 1;
+    cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 3);
+    cpu->stack_pointer -= 2;
+    cpu->program_counter = cpu_get_operand_address(cpu, mode);
 }
 void cpu_jsr(enum AddressingMode mode, CPU *cpu)
 {
@@ -872,7 +876,10 @@ void cpu_jsr(enum AddressingMode mode, CPU *cpu)
 
 void cpu_rtl(enum AddressingMode mode, CPU *cpu)
 {
-
+    cpu->stack_pointer += 2;
+    cpu->program_counter = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1) + 1;
+    cpu->stack_pointer += 1;
+    cpu->program_bank = cpu_mem_read_u8(cpu, cpu->stack_pointer);
 }
 void cpu_rts(enum AddressingMode mode, CPU *cpu)
 {
@@ -884,15 +891,17 @@ void cpu_brk(enum AddressingMode mode, CPU *cpu)
 {
     if (cpu->emulation_mode)
     {
-        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
-        cpu->stack_pointer -= 2;
+        cpu_mem_write_u16(cpu, (cpu->stack_pointer - 1) % 0x0100, cpu->program_counter + 1);
+        cpu->stack_pointer = (cpu->stack_pointer - 2) % 0x0100;
         cpu->status |= BREAK_FLAG;
         cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
-        cpu->stack_pointer -= 1;
+        cpu->stack_pointer = (cpu->stack_pointer - 1) % 0x0100;
         cpu->program_counter = cpu_mem_read_u16(cpu, 0xFFFE);
     }
     else
     {
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->program_bank);
+        cpu->stack_pointer -= 1;
         cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
         cpu->stack_pointer -= 2;
         cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
@@ -908,24 +917,105 @@ void cpu_brk(enum AddressingMode mode, CPU *cpu)
 }
 void cpu_cop(enum AddressingMode mode, CPU *cpu)
 {
+    if (cpu->emulation_mode)
+    {
+        cpu_mem_write_u16(cpu, (cpu->stack_pointer - 1) % 0x0100, cpu->program_counter + 1);
+        cpu->stack_pointer = (cpu->stack_pointer - 2) % 0x0100;
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer = (cpu->stack_pointer - 1) % 0x0100;
+        cpu->program_counter = cpu_mem_read_u16(cpu, 0xFFF4);
+    }
+    else
+    {
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->program_bank);
+        cpu->stack_pointer -= 1;
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
+        cpu->stack_pointer -= 2;
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer -= 1;
+        cpu->program_counter = cpu_mem_read_u16(cpu, 0x00FFE4);
+    }
 
+    // turn on interrupt flag
+    cpu->status |= 0b00000100;
+
+    // turn off decimal flag
+    cpu->status &= 0b11110111;
 }
 
-void cpu_abt(enum AddressingMode mode)
+void cpu_abt(enum AddressingMode mode, CPU *cpu)
 {
-
+    if (cpu->emulation_mode)
+    {
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
+        cpu->stack_pointer -= 2;
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer -= 1;
+        cpu->program_counter = cpu_mem_read_u16(cpu, 0x00FFF8);
+    }
+    else
+    {
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->program_bank);
+        cpu->stack_pointer -= 1;
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
+        cpu->stack_pointer -= 2;
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer -= 1;
+        cpu->program_counter = cpu_mem_read_u16(cpu, 0x00FFE8);
+    }
 }
-void cpu_irq(enum AddressingMode mode)
+void cpu_irq(enum AddressingMode mode, CPU *cpu)
 {
-
+    if (cpu->emulation_mode)
+    {
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
+        cpu->stack_pointer -= 2;
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer -= 1;
+        cpu->program_counter = cpu_mem_read_u16(cpu, 0x00FFFE);
+    }
+    else
+    {
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->program_bank);
+        cpu->stack_pointer -= 1;
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
+        cpu->stack_pointer -= 2;
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer -= 1;
+        cpu->program_counter = cpu_mem_read_u16(cpu, 0x00FFEE);
+    }
 }
-void cpu_nmi(enum AddressingMode mode)
+void cpu_nmi(enum AddressingMode mode, CPU *cpu)
 {
-
+    if (cpu->emulation_mode)
+    {
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
+        cpu->stack_pointer -= 2;
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer -= 1;
+        cpu->program_counter = cpu_mem_read_u16(cpu, 0x00FFFA);
+    }
+    else
+    {
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->program_bank);
+        cpu->stack_pointer -= 1;
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
+        cpu->stack_pointer -= 2;
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer -= 1;
+        cpu->program_counter = cpu_mem_read_u16(cpu, 0x00FFEA);
+    }
 }
-void cpu_rst(enum AddressingMode mode)
+void cpu_rst(enum AddressingMode mode, CPU *cpu)
 {
-
+    if (cpu->emulation_mode)
+    {
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
+        cpu->stack_pointer -= 2;
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer -= 1;
+        cpu->program_counter = cpu_mem_read_u16(cpu, 0x00FFFC);
+    }
 }
 
 void cpu_rti(enum AddressingMode mode, CPU *cpu)
@@ -934,7 +1024,7 @@ void cpu_rti(enum AddressingMode mode, CPU *cpu)
     {
         // In emulation mode, the P register is pulled, then the 16-bit program counter is pulled (again low byte first, then high byte). 
         cpu->stack_pointer += 1;
-        cpu->status = cpu->wram[cpu->stack_pointer];
+        cpu->status = cpu_mem_read_u8(cpu, cpu->stack_pointer);
         cpu->stack_pointer += 2;
         cpu->program_counter = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1);
     }
@@ -943,11 +1033,11 @@ void cpu_rti(enum AddressingMode mode, CPU *cpu)
         // In native mode, the P register is pulled, then the 16-bit program counter is pulled (low byte first, then high byte), 
         //then the K register (i.e. program bank register) is pulled. 
         cpu->stack_pointer += 1;
-        cpu->status = cpu->wram[cpu->stack_pointer];
+        cpu->status = cpu_mem_read_u8(cpu, cpu->stack_pointer);
         cpu->stack_pointer += 2;
         cpu->program_counter = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1);
         cpu->stack_pointer += 1;
-        cpu->program_bank = cpu->wram[cpu->stack_pointer];
+        cpu->program_bank = cpu_mem_read_u8(cpu, cpu->stack_pointer);
     }
 }
 
@@ -1052,98 +1142,206 @@ void cpu_stz(enum AddressingMode mode, CPU *cpu)
     cpu_mem_write_u16(cpu, addr, cpu_mem_read_u16(cpu, 0));
 }
 
-void cpu_mvn(enum AddressingMode mode)
+void cpu_mvn(enum AddressingMode mode, CPU *cpu)
 {
+    //unsigned int addr = cpu_get_operand_address(cpu, mode);
 
+    while (1)
+    {
+        cpu_mem_write_u8(cpu, cpu->register_y, cpu_mem_read_u8(cpu, cpu->register_x));
+
+        cpu->register_a -= 1;
+
+        cpu->register_x += 1;
+        cpu->register_y += 1;
+
+        if (cpu->interrupt) return;
+        if (cpu->register_a == 0xFFFF) return;
+    }
 }
-void cpu_mvp(enum AddressingMode mode)
+void cpu_mvp(enum AddressingMode mode, CPU *cpu)
 {
+    //unsigned int addr = cpu_get_operand_address(cpu, mode);
 
+    while (1)
+    {
+        cpu_mem_write_u8(cpu, cpu->register_y, cpu_mem_read_u8(cpu, cpu->register_x));
+
+        cpu->register_a -= 1;
+
+        cpu->register_x -= 1;
+        cpu->register_y -= 1;
+
+        if (cpu->interrupt) return;
+        if (cpu->register_a == 0xFFFF) return;
+    }
 }
 
 void cpu_nop(enum AddressingMode mode)
 {
-
+    // do nothing
 }
 void cpu_wdm(enum AddressingMode mode)
 {
-
+    // do nothing, skip first byte
 }
 
-void cpu_pea(enum AddressingMode mode)
+void cpu_pea(enum AddressingMode mode, CPU *cpu)
 {
-
+    unsigned int addr = cpu_get_operand_address(cpu, mode);
+    cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu_mem_read_u16(cpu, addr));
+    cpu->stack_pointer -= 2;
 }
-void cpu_pei(enum AddressingMode mode)
+void cpu_pei(enum AddressingMode mode, CPU *cpu)
 {
-
+    unsigned int addr = cpu_get_operand_address(cpu, mode);
+    cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu_mem_read_u16(cpu, addr));
+    cpu->stack_pointer -= 2;
 }
-void cpu_per(enum AddressingMode mode)
+void cpu_per(enum AddressingMode mode, CPU *cpu)
 {
-
-}
-
-void cpu_pha(enum AddressingMode mode)
-{
-
-}
-void cpu_phx(enum AddressingMode mode)
-{
-
-}
-void cpu_phy(enum AddressingMode mode)
-{
-
-}
-void cpu_pla(enum AddressingMode mode)
-{
-
-}
-void cpu_plx(enum AddressingMode mode)
-{
-
-}
-void cpu_ply(enum AddressingMode mode)
-{
-
+    unsigned int addr = cpu_get_operand_address(cpu, mode);
+    cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu_mem_read_u16(cpu, addr));
+    cpu->stack_pointer -= 2;
 }
 
-void cpu_phb(enum AddressingMode mode)
+void cpu_pha(enum AddressingMode mode, CPU *cpu)
 {
-
+    if (cpu->status & MEMORY_WIDTH)
+    {
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->register_a);
+        cpu->stack_pointer -= 1;
+    }
+    else
+    {
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->register_a);
+        cpu->stack_pointer -= 2;
+    }
 }
-void cpu_phd(enum AddressingMode mode)
+void cpu_phx(enum AddressingMode mode, CPU *cpu)
 {
-
+    if (cpu->status & INDEX_WIDTH)
+    {
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->register_x);
+        cpu->stack_pointer -= 1;
+    }
+    else
+    {
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->register_x);
+        cpu->stack_pointer -= 2;
+    }
 }
-void cpu_phk(enum AddressingMode mode)
+void cpu_phy(enum AddressingMode mode, CPU *cpu)
 {
-
+    if (cpu->status & INDEX_WIDTH)
+    {
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->register_y);
+        cpu->stack_pointer -= 1;
+    }
+    else
+    {
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->register_y);
+        cpu->stack_pointer -= 2;
+    }
 }
-void cpu_php(enum AddressingMode mode)
+void cpu_pla(enum AddressingMode mode, CPU *cpu)
 {
+    if (cpu->status & MEMORY_WIDTH)
+    {
+        cpu->stack_pointer += 1;
+        cpu->register_a = cpu_mem_read_u8(cpu, cpu->stack_pointer);
+        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_a);
+    }
+    else
+    {
+        cpu->stack_pointer += 2;
+        cpu->register_a = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1);
+        cpu_set_negative_16bit(&cpu->status, cpu->register_a);
+    }
 
+    cpu_set_zero_flag(&cpu->status, cpu->register_a);
 }
-void cpu_plb(enum AddressingMode mode)
+void cpu_plx(enum AddressingMode mode, CPU *cpu)
 {
+    if (cpu->status & INDEX_WIDTH)
+    {
+        cpu->stack_pointer += 1;
+        cpu->register_x = cpu_mem_read_u8(cpu, cpu->stack_pointer);
+        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_x);
+    }
+    else
+    {
+        cpu->stack_pointer += 2;
+        cpu->register_x = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1);
+        cpu_set_negative_16bit(&cpu->status, cpu->register_x);
+    }
 
+    cpu_set_zero_flag(&cpu->status, cpu->register_x);
 }
-void cpu_pld(enum AddressingMode mode)
+void cpu_ply(enum AddressingMode mode, CPU *cpu)
 {
+    if (cpu->status & MEMORY_WIDTH)
+    {
+        cpu->stack_pointer += 1;
+        cpu->register_y = cpu_mem_read_u8(cpu, cpu->stack_pointer);
+        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_y);
+    }
+    else
+    {
+        cpu->stack_pointer += 2;
+        cpu->register_y = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1);
+        cpu_set_negative_16bit(&cpu->status, cpu->register_y);
+    }
 
+    cpu_set_zero_flag(&cpu->status, cpu->register_y);
 }
-void cpu_plp(enum AddressingMode mode)
+
+void cpu_phb(enum AddressingMode mode, CPU *cpu)
 {
-    
+    cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->data_bank);
+    cpu->stack_pointer -= 1;
+}
+void cpu_phd(enum AddressingMode mode, CPU *cpu)
+{
+    cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->register_direct);
+    cpu->stack_pointer -= 2;
+}
+void cpu_phk(enum AddressingMode mode, CPU *cpu)
+{
+    cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->program_bank);
+    cpu->stack_pointer -= 1;
+}
+void cpu_php(enum AddressingMode mode, CPU *cpu)
+{
+    cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+    cpu->stack_pointer -= 1;
+}
+void cpu_plb(enum AddressingMode mode, CPU *cpu)
+{
+    cpu->stack_pointer += 1;
+    cpu->program_bank = cpu_mem_read_u8(cpu, cpu->stack_pointer);
+    cpu_set_negative_8bit(&cpu->status, cpu->program_bank);
+}
+void cpu_pld(enum AddressingMode mode, CPU *cpu)
+{
+    cpu->stack_pointer += 2;
+    cpu->register_direct = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1);
+    cpu_set_negative_16bit(&cpu->status, cpu->register_direct);
+}
+void cpu_plp(enum AddressingMode mode, CPU *cpu)
+{
+    cpu->stack_pointer += 1;
+    cpu->status = cpu_mem_read_u8(cpu, cpu->stack_pointer);
+    if (cpu->emulation_mode) cpu->status |= 0b00110000;
 }
 
-void cpu_stp(enum AddressingMode mode)
+void cpu_stp(enum AddressingMode mode, CPU *cpu)
 {
-
+    cpu->stop = 1;
 }
-void cpu_wai(enum AddressingMode mode)
+void cpu_wai(enum AddressingMode mode, CPU *cpu)
 {
-
+    cpu->wait = 1;
 }
 
 void cpu_tax(enum AddressingMode mode, CPU *cpu)
@@ -1457,6 +1655,12 @@ void cpu_set_overflow_flag(unsigned char *status, unsigned short result)
 
 }
 
+void cpu_set_zero_flag(unsigned char *status, unsigned short result)
+{
+    if (result == 0)    *status |= ZERO_FLAG;
+    else                *status &= 0b11111101;
+}
+
 void cpu_set_zero_flag_u8(unsigned char *status, unsigned char result)
 {
     if (result == 0)    *status |= ZERO_FLAG;
@@ -1566,6 +1770,22 @@ void cpu_set_idx_flag(unsigned char *status, unsigned short *reg)
 
 void cpu_interpret(CPU *cpu)
 {
+    if (cpu->stop) return;
+
+    if (cpu->wait)
+    {
+        if (!(cpu->status & INTERRUPT_FLAG))
+        {
+            if (cpu->interrupt)
+            {
+                // do the interrupt = push states and jump to vector
+
+                cpu->wait = 0;
+            }
+            else return;
+        }
+    }
+
     unsigned char operand = 0;
 
     switch (operand)
@@ -1611,7 +1831,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 2;
             break;
         case 0x08:
-            cpu_php(IMPLIED);
+            cpu_php(IMPLIED, cpu);
             cpu->cycles += 3;
             cpu->program_counter += 1;
             break;
@@ -1626,7 +1846,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 1;
             break;
         case 0x0B:
-            cpu_phd(IMPLIED);
+            cpu_phd(IMPLIED, cpu);
             cpu->cycles += 4;
             cpu->program_counter += 1;
             break;
@@ -1771,7 +1991,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 2;
             break;
         case 0x28:
-            cpu_plp(IMPLIED);
+            cpu_plp(IMPLIED, cpu);
             cpu->cycles += 4;
             cpu->program_counter += 1;
             break;
@@ -1786,7 +2006,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 1;
             break;
         case 0x2B:
-            cpu_pld(IMPLIED);
+            cpu_pld(IMPLIED, cpu);
             cpu->cycles += 5;
             cpu->program_counter += 1;
             break;
@@ -1911,7 +2131,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 2;
             break;
         case 0x44:
-            cpu_mvp(SOURCE_DEST);
+            cpu_mvp(SOURCE_DEST, cpu);
             cpu->cycles += 7;
             cpu->program_counter += 3;
             break;
@@ -1931,7 +2151,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 2;
             break;
         case 0x48:
-            cpu_pha(IMPLIED);
+            cpu_pha(IMPLIED, cpu);
             cpu->cycles += 4;
             cpu->program_counter += 1;
             break;
@@ -1946,7 +2166,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 1;
             break;
         case 0x4B:
-            cpu_phk(IMPLIED);
+            cpu_phk(IMPLIED, cpu);
             cpu->cycles += 3;
             cpu->program_counter += 1;
             break;
@@ -1991,7 +2211,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 2;
             break;
         case 0x54:
-            cpu_mvn(SOURCE_DEST);
+            cpu_mvn(SOURCE_DEST, cpu);
             cpu->cycles += 7;
             cpu->program_counter += 3;
             break;
@@ -2021,7 +2241,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 3;
             break;
         case 0x5A:
-            cpu_phy(IMPLIED);
+            cpu_phy(IMPLIED, cpu);
             cpu->cycles += 4;
             cpu->program_counter += 1;
             break;
@@ -2061,7 +2281,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 2;
             break;
         case 0x62:
-            cpu_per(IMMEDIATE);
+            cpu_per(IMMEDIATE, cpu);
             cpu->cycles += 6;
             cpu->program_counter += 3;
             break;
@@ -2091,7 +2311,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 2;
             break;
         case 0x68:
-            cpu_pla(IMPLIED);
+            cpu_pla(IMPLIED, cpu);
             cpu->cycles += 5;
             cpu->program_counter += 1;
             break;
@@ -2181,7 +2401,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 3;
             break;
         case 0x7A:
-            cpu_ply(IMPLIED);
+            cpu_ply(IMPLIED, cpu);
             cpu->cycles += 5;
             cpu->program_counter += 1;
             break;
@@ -2266,7 +2486,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 1;
             break;
         case 0x8B:
-            cpu_phb(IMPLIED);
+            cpu_phb(IMPLIED, cpu);
             cpu->cycles += 3;
             cpu->program_counter += 1;
             break;
@@ -2426,7 +2646,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 1;
             break;
         case 0xAB:
-            cpu_plb(IMPLIED);
+            cpu_plb(IMPLIED, cpu);
             cpu->cycles += 4;
             cpu->program_counter += 1;
             break;
@@ -2586,7 +2806,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 1;
             break;
         case 0xCB:
-            cpu_wai(IMPLIED);
+            cpu_wai(IMPLIED, cpu);
             cpu->cycles += 3;
             cpu->program_counter += 1;
             break;
@@ -2631,7 +2851,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 2;
             break;
         case 0xD4:
-            cpu_pei(DIRECT);
+            cpu_pei(DIRECT, cpu);
             cpu->cycles += 6;
             cpu->program_counter += 2;
             break;
@@ -2661,12 +2881,12 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 3;
             break;
         case 0xDA:
-            cpu_phx(IMPLIED);
+            cpu_phx(IMPLIED, cpu);
             cpu->cycles += 4;
             cpu->program_counter += 1;
             break;
         case 0xDB:
-            cpu_stp(IMPLIED);
+            cpu_stp(IMPLIED, cpu);
             cpu->cycles += 3;
             cpu->program_counter += 1;
             break;
@@ -2791,7 +3011,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 2;
             break;
         case 0xF4:
-            cpu_pea(IMMEDIATE);
+            cpu_pea(IMMEDIATE, cpu);
             cpu->cycles += 5;
             cpu->program_counter += 3;
             break;
@@ -2821,7 +3041,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 3;
             break;
         case 0xFA:
-            cpu_plx(IMPLIED);
+            cpu_plx(IMPLIED, cpu);
             cpu->cycles += 5;
             cpu->program_counter += 1;
             break;
