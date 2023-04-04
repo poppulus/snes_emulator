@@ -187,7 +187,8 @@ extern void cpu_xba(enum AddressingMode, CPU*);
 
 extern void cpu_xce(enum AddressingMode, CPU*);
 
-extern void cpu_set_overflow_flag(unsigned char*, unsigned short);
+extern void cpu_set_overflow_flag_u8(unsigned char *status, unsigned char result);
+extern void cpu_set_overflow_flag_u16(unsigned char *status, unsigned short result);
 
 extern void cpu_set_zero_flag(unsigned char *status, unsigned short result);
 
