@@ -48,13 +48,30 @@ void cpu_adc(enum AddressingMode mode, CPU *cpu)
         else 
             cpu->status = cpu->status & 0b10111111;
 
+        unsigned short old = cpu->register_a;
+
         cpu->register_a = sum & 0xFF;
 
         if (sum > 0xFF) cpu_sec(mode, &cpu->status);
         else cpu_clc(mode, &cpu->status);
 
-        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_a);
-        cpu_set_zero_flag_u8(&cpu->status, (unsigned char)cpu->register_a);
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_a);
+        cpu->cycles -= 1;
+
+        switch (mode)
+        {
+            default: break;
+            case DIRECT_SHORT_Y:
+            case ABSOLUTE_X:
+            case ABSOLUTE_Y:
+                if (cpu->status & INDEX_WIDTH)
+                {
+                    cpu->cycles -= 1;
+                    if ((old >> 8) != (cpu->register_a >> 8))
+                        cpu->cycles += 1;
+                }
+                break;
+        }
     }
     else
     {
@@ -68,14 +85,30 @@ void cpu_adc(enum AddressingMode mode, CPU *cpu)
         if (sum > 0xFFFF) cpu_sec(mode, &cpu->status);
         else cpu_clc(mode, &cpu->status);
 
-        cpu_set_negative_16bit(&cpu->status, cpu->register_a);
-        cpu_set_zero_flag_u16(&cpu->status, cpu->register_a);
+        cpu_set_negative_u16(&cpu->status, cpu->register_a);
     }
+
+    switch (mode)
+    {
+        default: break;
+        case DIRECT:
+        case DIRECT_X:
+        case DIRECT_SHORT:
+        case DIRECT_SHORT_X:
+        case DIRECT_SHORT_Y:
+        case DIRECT_LONG:
+        case DIRECT_LONG_Y:
+            if ((cpu->register_direct & 0xFF) != 0)
+                cpu->cycles += 1;
+            break;
+    }
+
+    cpu_set_zero_flag(&cpu->status, cpu->register_a);
 }
 void cpu_sbc(enum AddressingMode mode, CPU *cpu)
 {
     unsigned int    addr = cpu_get_operand_address(cpu, mode);
-    unsigned short  arg = cpu->wram[addr] ^ 0xFFFF;
+    unsigned short  arg = cpu_mem_read_u16(cpu, addr) ^ 0xFFFF;
 
     int             sum = cpu->register_a + arg + (cpu->status & CARRY_FLAG);
 
@@ -89,13 +122,30 @@ void cpu_sbc(enum AddressingMode mode, CPU *cpu)
         else 
             cpu->status = cpu->status & 0b10111111;
 
+        unsigned short old = cpu->register_a;
+
         cpu->register_a = sum & 0xFF;
 
         if (sum > 0xFF) cpu_sec(mode, &cpu->status);
         else cpu_clc(mode, &cpu->status);
 
-        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_a);
-        cpu_set_zero_flag_u8(&cpu->status, (unsigned char)cpu->register_a);
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_a);
+        cpu->cycles -= 1;
+
+        switch (mode)
+        {
+            default: break;
+            case DIRECT_SHORT_Y:
+            case ABSOLUTE_X:
+            case ABSOLUTE_Y:
+                if (cpu->status & INDEX_WIDTH)
+                {
+                    cpu->cycles -= 1;
+                    if ((old >> 8) != (cpu->register_a >> 8))
+                        cpu->cycles += 1;
+                }
+                break;
+        }
     }
     else
     {
@@ -109,9 +159,25 @@ void cpu_sbc(enum AddressingMode mode, CPU *cpu)
         if (sum > 0xFFFF) cpu_sec(mode, &cpu->status);
         else cpu_clc(mode, &cpu->status);
 
-        cpu_set_negative_16bit(&cpu->status, cpu->register_a);
-        cpu_set_zero_flag_u16(&cpu->status, cpu->register_a);
+        cpu_set_negative_u16(&cpu->status, cpu->register_a);
     }
+
+    switch (mode)
+    {
+        default: break;
+        case DIRECT:
+        case DIRECT_X:
+        case DIRECT_SHORT:
+        case DIRECT_SHORT_X:
+        case DIRECT_SHORT_Y:
+        case DIRECT_LONG:
+        case DIRECT_LONG_Y:
+            if ((cpu->register_direct & 0xFF) != 0)
+                cpu->cycles += 1;
+            break;
+    }
+
+    cpu_set_zero_flag(&cpu->status, cpu->register_a);
 }
 
 void cpu_cmp(enum AddressingMode mode, CPU *cpu)
@@ -119,14 +185,33 @@ void cpu_cmp(enum AddressingMode mode, CPU *cpu)
     unsigned int addr = cpu_get_operand_address(cpu, mode);
     unsigned short result;
 
-    if (cpu->emulation_mode)
+    if (cpu->status & MEMORY_WIDTH)
     {
         if ((unsigned char)cpu->register_a >= cpu->wram[addr])
             cpu->status |= CARRY_FLAG;
         else 
             cpu->status &= 0b11111110;
 
+        unsigned short old = cpu->register_a;
+
         result = (unsigned char)cpu->register_a - cpu->wram[addr];
+        cpu_set_negative_u8(&cpu->status, (unsigned char)result);
+        cpu->cycles -= 1;
+
+        switch (mode)
+        {
+            default: break;
+            case DIRECT_SHORT_Y:
+            case ABSOLUTE_X:
+            case ABSOLUTE_Y:
+                if (cpu->status & INDEX_WIDTH)
+                {
+                    cpu->cycles -= 1;
+                    if ((old >> 8) != (result >> 8))
+                        cpu->cycles += 1;
+                }
+                break;
+        }
     }
     else
     {
@@ -136,17 +221,32 @@ void cpu_cmp(enum AddressingMode mode, CPU *cpu)
             cpu->status &= 0b11111110;
 
         result = cpu->register_a - cpu_mem_read_u16(cpu, addr);
+        cpu_set_negative_u16(&cpu->status, result);
     }
 
-    cpu_set_mem_zero_flag(&cpu->status, result);
-    cpu_set_mem_negative(&cpu->status, result);
+    switch (mode)
+    {
+        default: break;
+        case DIRECT:
+        case DIRECT_X:
+        case DIRECT_SHORT:
+        case DIRECT_SHORT_X:
+        case DIRECT_SHORT_Y:
+        case DIRECT_LONG:
+        case DIRECT_LONG_Y:
+            if ((cpu->register_direct & 0xFF) != 0)
+                cpu->cycles += 1;
+            break;
+    }
+
+    cpu_set_zero_flag(&cpu->status, result);
 }
 void cpu_cpx(enum AddressingMode mode, CPU *cpu)
 {
     unsigned int addr = cpu_get_operand_address(cpu, mode);
     unsigned short result;
 
-    if (cpu->emulation_mode)
+    if (cpu->status & INDEX_WIDTH)
     {
         if ((unsigned char)cpu->register_x >= cpu->wram[addr])
             cpu->status |= CARRY_FLAG;
@@ -154,6 +254,8 @@ void cpu_cpx(enum AddressingMode mode, CPU *cpu)
             cpu->status &= 0b11111110;
 
         result = (unsigned char)cpu->register_x - cpu->wram[addr];
+        cpu_set_negative_u8(&cpu->status, (unsigned char)result);
+        cpu->cycles -= 1;
     }
     else
     {
@@ -163,17 +265,19 @@ void cpu_cpx(enum AddressingMode mode, CPU *cpu)
             cpu->status &= 0b11111110;
 
         result = cpu->register_x - cpu_mem_read_u16(cpu, addr);
+        cpu_set_negative_u16(&cpu->status, result);
     }
 
-    cpu_set_mem_zero_flag(&cpu->status, result);
-    cpu_set_mem_negative(&cpu->status, result);
+    if (mode == DIRECT) cpu->cycles += 1;
+
+    cpu_set_zero_flag(&cpu->status, result);
 }
 void cpu_cpy(enum AddressingMode mode, CPU *cpu)
 {
     unsigned int addr = cpu_get_operand_address(cpu, mode);
     unsigned short result;
 
-    if (cpu->emulation_mode)
+    if (cpu->status & INDEX_WIDTH)
     {
         if ((unsigned char)cpu->register_y >= cpu->wram[addr])
             cpu->status |= CARRY_FLAG;
@@ -181,6 +285,8 @@ void cpu_cpy(enum AddressingMode mode, CPU *cpu)
             cpu->status &= 0b11111110;
 
         result = (unsigned char)cpu->register_y - cpu->wram[addr];
+        cpu_set_negative_u8(&cpu->status, (unsigned char)result);
+        cpu->cycles -= 1;
     }
     else
     {
@@ -190,145 +296,306 @@ void cpu_cpy(enum AddressingMode mode, CPU *cpu)
             cpu->status &= 0b11111110;
 
         result = cpu->register_y - cpu_mem_read_u16(cpu, addr);
+        cpu_set_negative_u16(&cpu->status, result);
     }
 
-    cpu_set_mem_zero_flag(&cpu->status, result);
-    cpu_set_mem_negative(&cpu->status, result);
+    if (mode == DIRECT) cpu->cycles += 1;
+
+    cpu_set_zero_flag(&cpu->status, result);
 }
 
 void cpu_dec(enum AddressingMode mode, CPU *cpu)
 {
     unsigned short result;
-
-    if (mode == ACCUMULATOR)
+    if (cpu->status & MEMORY_WIDTH)
     {
-        if (cpu->emulation_mode)
+        if (mode == ACCUMULATOR)
+        {
             cpu->register_a = (unsigned char)cpu->register_a - 1;
+            result = (unsigned char)cpu->register_a;
+        }
         else
-            cpu->register_a -= 1;
-
-        result = cpu->register_a;
+        {
+            unsigned int addr = cpu_get_operand_address(cpu, mode);
+            cpu->wram[addr] -= 1;
+            result = cpu->wram[addr];
+        }
+        cpu_set_negative_u8(&cpu->status, (unsigned char)result);
+        cpu->cycles -= 2;
     }
     else
     {
-        unsigned int addr = cpu_get_operand_address(cpu, mode);
-
-        if (cpu->emulation_mode)
-            cpu->wram[addr] -= 1;
+        if (mode == ACCUMULATOR)
+        {
+            cpu->register_a--;
+            result = cpu->register_a;
+        }
         else
+        {
+            unsigned int addr = cpu_get_operand_address(cpu, mode);
             cpu_mem_write_u16(cpu, addr, cpu_mem_read_u16(cpu, addr) - 1);
-
-        result = cpu_mem_read_u16(cpu, addr);
+            result = cpu_mem_read_u16(cpu, addr);
+        }
+        cpu_set_negative_u16(&cpu->status, result);
     }
 
-    cpu_set_mem_zero_flag(&cpu->status, result);
-    cpu_set_mem_negative(&cpu->status, result);
+    if (mode == DIRECT || mode == DIRECT_X) 
+    {
+        if ((cpu->register_direct & 0xFF) != 0) cpu->cycles += 1;
+    }
+
+    cpu_set_zero_flag(&cpu->status, result);
 }
 void cpu_dex(enum AddressingMode mode, CPU *cpu)
 {
-    if (cpu->emulation_mode)
+    if (cpu->status & INDEX_WIDTH)
+    {
         cpu->register_x = (unsigned char)cpu->register_x - 1;
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_x);
+    }
     else
-        cpu->register_x -= 1;
-
-    cpu_set_mem_zero_flag(&cpu->status, cpu->register_x);
-    cpu_set_idx_negative(&cpu->status, cpu->register_x);
+    {
+        cpu->register_x--;
+        cpu_set_negative_u16(&cpu->status, cpu->register_x);
+    }
+    cpu_set_zero_flag(&cpu->status, cpu->register_x);
 }
 void cpu_dey(enum AddressingMode mode, CPU *cpu)
 {
-    if (cpu->emulation_mode)
+    if (cpu->status & INDEX_WIDTH)
+    {
         cpu->register_y = (unsigned char)cpu->register_y - 1;
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_y);
+    }
     else
-        cpu->register_y -= 1;
-
-    cpu_set_mem_zero_flag(&cpu->status, cpu->register_y);
-    cpu_set_idx_negative(&cpu->status, cpu->register_y);
+    {
+        cpu->register_y--;
+        cpu_set_negative_u16(&cpu->status, cpu->register_y);
+    }
+    cpu_set_zero_flag(&cpu->status, cpu->register_y);
 }
 
 void cpu_inc(enum AddressingMode mode, CPU *cpu)
 {
     unsigned short result;
 
-    if (mode == ACCUMULATOR)
+    if (cpu->status & MEMORY_WIDTH)
     {
-        if (cpu->emulation_mode)
+        if (mode == ACCUMULATOR)
+        {
             cpu->register_a = (unsigned char)cpu->register_a + 1;
+            result = (unsigned char)cpu->register_a;
+        }
         else
-            cpu->register_a += 1;
-
-        result = cpu->register_a;
+        {
+            unsigned int addr = cpu_get_operand_address(cpu, mode);
+            cpu->wram[addr] += 1;
+            result = cpu->wram[addr];
+        }
+        cpu_set_negative_u8(&cpu->status, (unsigned char)result);
+        cpu->cycles -= 2;
     }
     else
     {
-        unsigned int addr = cpu_get_operand_address(cpu, mode);
-
-        if (cpu->emulation_mode)
-            cpu->wram[addr] += 1;
+        if (mode == ACCUMULATOR)
+        {
+            cpu->register_a++;
+            result = cpu->register_a;
+        }
         else
+        {
+            unsigned int addr = cpu_get_operand_address(cpu, mode);
             cpu_mem_write_u16(cpu, addr, cpu_mem_read_u16(cpu, addr) + 1);
-
-        result = cpu_mem_read_u16(cpu, addr);
+            result = cpu_mem_read_u16(cpu, addr);
+        }
+        cpu_set_negative_u16(&cpu->status, result);
     }
 
-    cpu_set_mem_zero_flag(&cpu->status, result);
-    cpu_set_mem_negative(&cpu->status, result);
+    if (mode == DIRECT || mode == DIRECT_X) 
+    {
+        if ((cpu->register_direct & 0xFF) != 0) cpu->cycles += 1;
+    }
+
+    cpu_set_zero_flag(&cpu->status, result);
 }
 void cpu_inx(enum AddressingMode mode, CPU *cpu)
 {
-    if (cpu->emulation_mode)
+    if (cpu->status & INDEX_WIDTH)
+    {
         cpu->register_x = (unsigned char)cpu->register_x + 1;
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_x);
+    }
     else
-        cpu->register_x -= 1;
-
-    cpu_set_idx_zero_flag(&cpu->status, cpu->register_x);
-    cpu_set_idx_negative(&cpu->status, cpu->register_x);
+    {
+        cpu->register_x++;
+        cpu_set_negative_u16(&cpu->status, cpu->register_x);
+    }
+    cpu_set_zero_flag(&cpu->status, cpu->register_x);
 }
 void cpu_iny(enum AddressingMode mode, CPU *cpu)
 {
-    if (cpu->emulation_mode)
+    if (cpu->status & INDEX_WIDTH)
+    {
         cpu->register_y = (unsigned char)cpu->register_y + 1;
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_y);
+    }
     else
-        cpu->register_y += 1;
-
-    cpu_set_idx_zero_flag(&cpu->status, cpu->register_y);
-    cpu_set_idx_negative(&cpu->status, cpu->register_y);
+    {
+        cpu->register_y++;
+        cpu_set_negative_u16(&cpu->status, cpu->register_y);
+    }
+    cpu_set_zero_flag(&cpu->status, cpu->register_y);
 }
 
 void cpu_and(enum AddressingMode mode, CPU *cpu)
 {
     unsigned int addr = cpu_get_operand_address(cpu, mode);
 
-    if (cpu->emulation_mode)
-        cpu->register_a = (cpu->register_a & cpu->wram[addr]);
-    else
-        cpu->register_a &= cpu_mem_read_u16(cpu, addr);
+    if (cpu->status & MEMORY_WIDTH)
+    {
+        unsigned short old = cpu->register_a;
+        
+        cpu->register_a = ((unsigned char)cpu->register_a & cpu->wram[addr]);
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_a);
+        cpu->cycles -= 1;
 
-    cpu_set_mem_zero_flag(&cpu->status, cpu->register_a);
-    cpu_set_mem_negative(&cpu->status, cpu->register_a);
+        switch (mode)
+        {
+            default: break;
+            case DIRECT_SHORT_Y:
+            case ABSOLUTE_X:
+            case ABSOLUTE_Y:
+                if (cpu->status & INDEX_WIDTH)
+                {
+                    cpu->cycles -= 1;
+                    if ((old >> 8) != (cpu->register_a >> 8))
+                        cpu->cycles += 1;
+                }
+                break;
+        }
+    }
+    else
+    {
+        cpu->register_a &= cpu_mem_read_u16(cpu, addr);
+        cpu_set_negative_u16(&cpu->status, cpu->register_a);
+    }
+
+    switch (mode)
+    {
+        default: break;
+        case DIRECT:
+        case DIRECT_X:
+        case DIRECT_SHORT:
+        case DIRECT_SHORT_X:
+        case DIRECT_SHORT_Y:
+        case DIRECT_LONG:
+        case DIRECT_LONG_Y:
+            if ((cpu->register_direct & 0xFF) != 0)
+                cpu->cycles += 1;
+            break;
+    }
+
+    cpu_set_zero_flag(&cpu->status, cpu->register_a);
 }
 void cpu_eor(enum AddressingMode mode, CPU *cpu)
 {
     unsigned int addr = cpu_get_operand_address(cpu, mode);
 
-    if (cpu->emulation_mode)
-        cpu->register_a = (unsigned char)cpu->register_a ^ cpu->wram[addr];
-    else
-        cpu->register_a ^= cpu_mem_read_u16(cpu, addr);
+    if (cpu->status & MEMORY_WIDTH)
+    {
+        unsigned short old = cpu->register_a;
 
-    cpu_set_mem_zero_flag(&cpu->status, cpu->register_a);
-    cpu_set_mem_negative(&cpu->status, cpu->register_a);
+        cpu->register_a = (unsigned char)cpu->register_a ^ cpu->wram[addr];
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_a);
+        cpu->cycles -= 1;
+
+        switch (mode)
+        {
+            default: break;
+            case DIRECT_SHORT_Y:
+            case ABSOLUTE_X:
+            case ABSOLUTE_Y:
+                if (cpu->status & INDEX_WIDTH)
+                {
+                    cpu->cycles -= 1;
+                    if ((old >> 8) != (cpu->register_a >> 8))
+                        cpu->cycles += 1;
+                }
+                break;
+        }
+    }
+    else
+    {
+        cpu->register_a ^= cpu_mem_read_u16(cpu, addr);
+        cpu_set_negative_u16(&cpu->status, cpu->register_a);
+    }
+
+    switch (mode)
+    {
+        default: break;
+        case DIRECT:
+        case DIRECT_X:
+        case DIRECT_SHORT:
+        case DIRECT_SHORT_X:
+        case DIRECT_SHORT_Y:
+        case DIRECT_LONG:
+        case DIRECT_LONG_Y:
+            if ((cpu->register_direct & 0xFF) != 0)
+                cpu->cycles += 1;
+            break;
+    }
+
+    cpu_set_zero_flag(&cpu->status, cpu->register_a);
 }
 void cpu_ora(enum AddressingMode mode, CPU *cpu)
 {
     unsigned int addr = cpu_get_operand_address(cpu, mode);
 
-    if (cpu->emulation_mode)
+    if (cpu->status & MEMORY_WIDTH)
+    {
+        unsigned short old = cpu->register_a;
+        
         cpu->register_a = (unsigned char)cpu->register_a | cpu->wram[addr];
-    else
-        cpu->register_a |= cpu_mem_read_u16(cpu, addr);
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_a);
+        cpu->cycles -= 1;
 
-    cpu_set_mem_zero_flag(&cpu->status, cpu->register_a);
-    cpu_set_mem_negative(&cpu->status, cpu->register_a);
+        switch (mode)
+        {
+            default: break;
+            case DIRECT_SHORT_Y:
+            case ABSOLUTE_X:
+            case ABSOLUTE_Y:
+                if (cpu->status & INDEX_WIDTH)
+                {
+                    cpu->cycles -= 1;
+                    if ((old >> 8) != (cpu->register_a >> 8))
+                        cpu->cycles += 1;
+                }
+                break;
+        }
+    }
+    else
+    {
+        cpu->register_a |= cpu_mem_read_u16(cpu, addr);
+        cpu_set_negative_u16(&cpu->status, cpu->register_a);
+    }
+
+    switch (mode)
+    {
+        default: break;
+        case DIRECT:
+        case DIRECT_X:
+        case DIRECT_SHORT:
+        case DIRECT_SHORT_X:
+        case DIRECT_SHORT_Y:
+        case DIRECT_LONG:
+        case DIRECT_LONG_Y:
+            if ((cpu->register_direct & 0xFF) != 0)
+                cpu->cycles += 1;
+            break;
+    }
+
+    cpu_set_zero_flag(&cpu->status, cpu->register_a);
 }
 
 void cpu_bit(enum AddressingMode mode, CPU *cpu)
@@ -338,6 +605,7 @@ void cpu_bit(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->status & MEMORY_WIDTH)
     {
+        unsigned short old = cpu->register_a;
         result = (unsigned char)cpu->register_a & cpu->wram[addr];
 
         switch (mode)
@@ -346,12 +614,25 @@ void cpu_bit(enum AddressingMode mode, CPU *cpu)
             case DIRECT:
             case ABSOLUTE:
             case DIRECT_X:
+                cpu_set_negative_u8(&cpu->status, result);
+                cpu_set_overflow_flag_u8(
+                    &cpu->status, 
+                    (unsigned char)cpu->register_a, 
+                    cpu->wram[addr], 
+                    (unsigned char)result);
+                break;
             case ABSOLUTE_X:
-                cpu_set_negative_8bit(&cpu->status, result);
-                cpu_set_overflow_flag_u8(&cpu->status, result);
+                cpu_set_negative_u8(&cpu->status, result);
+                cpu_set_overflow_flag_u8(
+                    &cpu->status, 
+                    (unsigned char)cpu->register_a, 
+                    cpu->wram[addr], 
+                    (unsigned char)result);
+
+                    if ((old >> 8) != (result >> 8))
+                        cpu->cycles += 1;
                 break;
         }
-
         cpu->cycles -= 1;
     }
     else
@@ -365,14 +646,24 @@ void cpu_bit(enum AddressingMode mode, CPU *cpu)
             case ABSOLUTE:
             case DIRECT_X:
             case ABSOLUTE_X:
-                cpu_set_negative_16bit(&cpu->status, result);
-                cpu_set_overflow_flag_u16(&cpu->status, result);
+                cpu_set_negative_u16(&cpu->status, result);
+                cpu_set_overflow_flag_u16(
+                    &cpu->status, 
+                    cpu->register_a,
+                    cpu_mem_read_u16(cpu, addr),
+                    result);
                 break;
         }
     }
 
     if (mode == ABSOLUTE_X && cpu->status & INDEX_WIDTH)
         cpu->cycles -= 1;
+
+    if (mode == DIRECT || mode == DIRECT_X)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
+    }
 
     cpu_set_zero_flag(&cpu->status, result);
 }
@@ -394,6 +685,12 @@ void cpu_trb(enum AddressingMode mode, CPU *cpu)
         cpu_mem_write_u16(cpu, addr, cpu->register_a & ~cpu_mem_read_u16(cpu, addr));
     }
 
+    if (mode == DIRECT)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
+    }
+
     cpu_set_zero_flag(&cpu->status, result);
 }
 void cpu_tsb(enum AddressingMode mode, CPU *cpu)
@@ -411,6 +708,12 @@ void cpu_tsb(enum AddressingMode mode, CPU *cpu)
     {
         result = cpu->register_a & cpu_mem_read_u16(cpu, addr);
         cpu_mem_write_u16(cpu, addr, cpu_mem_read_u16(cpu, addr) | cpu->register_a);
+    }
+
+    if (mode == DIRECT)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
     }
 
     cpu_set_zero_flag(&cpu->status, result);
@@ -444,8 +747,7 @@ void cpu_asl(enum AddressingMode mode, CPU *cpu)
         else 
             cpu->status = cpu->status & 0b11111110;
 
-        cpu_set_zero_flag_u8(&cpu->status, result);
-        cpu_set_negative_8bit(&cpu->status, result);
+        cpu_set_negative_u8(&cpu->status, result);
     }
     else
     {
@@ -471,8 +773,14 @@ void cpu_asl(enum AddressingMode mode, CPU *cpu)
         else 
             cpu->status = cpu->status & 0b11111110;
 
-        cpu_set_zero_flag_u16(&cpu->status, result);
-        cpu_set_negative_16bit(&cpu->status, result);
+        cpu_set_zero_flag(&cpu->status, result);
+        cpu_set_negative_u16(&cpu->status, result);
+    }
+
+    if (mode == DIRECT || mode == DIRECT_X)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
     }
 }
 void cpu_lsr(enum AddressingMode mode, CPU *cpu)
@@ -505,8 +813,8 @@ void cpu_lsr(enum AddressingMode mode, CPU *cpu)
         else 
             cpu->status = cpu->status & 0b11111110;
 
-        cpu_set_zero_flag_u8(&cpu->status, result);
-        cpu_set_negative_8bit(&cpu->status, result);
+        cpu_set_zero_flag(&cpu->status, result);
+        cpu_set_negative_u8(&cpu->status, result);
     }
     else
     {
@@ -534,8 +842,14 @@ void cpu_lsr(enum AddressingMode mode, CPU *cpu)
         else 
             cpu->status = cpu->status & 0b11111110;
 
-        cpu_set_zero_flag_u16(&cpu->status, result);
-        cpu_set_negative_16bit(&cpu->status, result);
+        cpu_set_zero_flag(&cpu->status, result);
+        cpu_set_negative_u16(&cpu->status, result);
+    }
+
+    if (mode == DIRECT || mode == DIRECT_X)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
     }
 }
 void cpu_rol(enum AddressingMode mode, CPU *cpu)
@@ -579,8 +893,8 @@ void cpu_rol(enum AddressingMode mode, CPU *cpu)
         else 
             cpu->status = cpu->status & 0b11111110;
 
-        cpu_set_zero_flag_u8(&cpu->status, *result);
-        cpu_set_negative_8bit(&cpu->status, *result);
+        cpu_set_zero_flag(&cpu->status, *result);
+        cpu_set_negative_u8(&cpu->status, *result);
     }
     else
     {
@@ -622,8 +936,14 @@ void cpu_rol(enum AddressingMode mode, CPU *cpu)
         if (old_bits & 0x7FFF)  cpu->status = cpu->status | CARRY_FLAG;
         else                    cpu->status = cpu->status & 0b11111110;
 
-        cpu_set_zero_flag_u16(&cpu->status, result);
-        cpu_set_negative_16bit(&cpu->status, result);
+        cpu_set_zero_flag(&cpu->status, result);
+        cpu_set_negative_u16(&cpu->status, result);
+    }
+
+    if (mode == DIRECT || mode == DIRECT_X)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
     }
 }
 void cpu_ror(enum AddressingMode mode, CPU *cpu)
@@ -667,8 +987,8 @@ void cpu_ror(enum AddressingMode mode, CPU *cpu)
         else 
             cpu->status = cpu->status & 0b11111110;
 
-        cpu_set_zero_flag_u8(&cpu->status, result);
-        cpu_set_negative_8bit(&cpu->status, result);
+        cpu_set_zero_flag(&cpu->status, result);
+        cpu_set_negative_u8(&cpu->status, result);
     }
     else
     {
@@ -710,8 +1030,14 @@ void cpu_ror(enum AddressingMode mode, CPU *cpu)
         if (old_bits & 0x0001)  cpu->status = cpu->status | CARRY_FLAG;
         else                    cpu->status = cpu->status & 0b11111110;
 
-        cpu_set_zero_flag_u16(&cpu->status, result);
-        cpu_set_negative_16bit(&cpu->status, result);
+        cpu_set_zero_flag(&cpu->status, result);
+        cpu_set_negative_u16(&cpu->status, result);
+    }
+
+    if (mode == DIRECT || mode == DIRECT_X)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
     }
 }
 
@@ -1133,17 +1459,41 @@ void cpu_lda(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->status & MEMORY_WIDTH)
     {
+        unsigned short old = cpu->register_a;
         cpu->register_a = cpu_mem_read_u8(cpu, addr);
-        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_a);
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_a);
         cpu->cycles -= 1;
 
-        if (mode == ABSOLUTE_X || mode == ABSOLUTE_Y)
-            cpu->cycles -= 1;
+        if (cpu->status & INDEX_WIDTH)
+        {
+            if (mode == ABSOLUTE_X 
+            || mode == ABSOLUTE_Y 
+            || mode == DIRECT_SHORT_Y)
+                cpu->cycles -= 1;
+
+            if ((old >> 8) != (cpu->register_a >> 8))
+                cpu->cycles += 1;
+        }
     }
     else
     {
         cpu->register_a = cpu_mem_read_u16(cpu, addr);
-        cpu_set_negative_16bit(&cpu->status, cpu->register_a);
+        cpu_set_negative_u16(&cpu->status, cpu->register_a);
+    }
+
+    switch (mode)
+    {
+        default: break;
+        case DIRECT:
+        case DIRECT_X:
+        case DIRECT_SHORT:
+        case DIRECT_SHORT_X:
+        case DIRECT_SHORT_Y:
+        case DIRECT_LONG:
+        case DIRECT_LONG_Y:
+            if ((cpu->register_direct & 0xFF) != 0)
+                cpu->cycles += 1;
+            break;
     }
     
     cpu_set_zero_flag(&cpu->status, cpu->register_a);
@@ -1154,14 +1504,29 @@ void cpu_ldx(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->status & INDEX_WIDTH)
     {
+        unsigned short old = cpu->register_x;
         cpu->register_x = cpu_mem_read_u8(cpu, addr);
-        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_x);
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_x);
         cpu->cycles -= mode == ABSOLUTE_Y ? 2 : 1;
+
+        if (mode == ABSOLUTE_X)
+        {
+            cpu->cycles -= 2;
+            if ((old >> 8) != (cpu->register_x >> 8))
+                cpu->cycles += 1;
+        }
+        else cpu->cycles -= 1;
     }
     else
     {
         cpu->register_x = cpu_mem_read_u16(cpu, addr);
-        cpu_set_negative_16bit(&cpu->status, cpu->register_x);
+        cpu_set_negative_u16(&cpu->status, cpu->register_x);
+    }
+
+    if (mode == DIRECT || mode == DIRECT_Y)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
     }
     
     cpu_set_zero_flag(&cpu->status, cpu->register_x);
@@ -1172,14 +1537,28 @@ void cpu_ldy(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->status & INDEX_WIDTH)
     {
+        unsigned short old = cpu->register_y;
         cpu->register_y = cpu_mem_read_u8(cpu, addr);
-        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_y);
-        cpu->cycles -= mode == ABSOLUTE_X ? 2 : 1;
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_y);
+
+        if (mode == ABSOLUTE_X)
+        {
+            cpu->cycles -= 2;
+            if ((old >> 8) != (cpu->register_y >> 8))
+                cpu->cycles += 1;
+        }
+        else cpu->cycles -= 1;
     }
     else
     {
         cpu->register_y = cpu_mem_read_u16(cpu, addr);
-        cpu_set_negative_16bit(&cpu->status, cpu->register_y);
+        cpu_set_negative_u16(&cpu->status, cpu->register_y);
+    }
+
+    if (mode == DIRECT || mode == DIRECT_X)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
     }
     
     cpu_set_zero_flag(&cpu->status, cpu->register_y);
@@ -1195,6 +1574,21 @@ void cpu_sta(enum AddressingMode mode, CPU *cpu)
         cpu->cycles -= 1;
     }
     else cpu_mem_write_u16(cpu, addr, cpu->register_a);
+
+    switch (mode)
+    {
+        default: break;
+        case DIRECT:
+        case DIRECT_X:
+        case DIRECT_SHORT:
+        case DIRECT_SHORT_X:
+        case DIRECT_SHORT_Y:
+        case DIRECT_LONG:
+        case DIRECT_LONG_Y:
+            if ((cpu->register_direct & 0xFF) != 0)
+                cpu->cycles += 1;
+            break;
+    }
 }
 void cpu_stx(enum AddressingMode mode, CPU *cpu)
 {
@@ -1206,6 +1600,12 @@ void cpu_stx(enum AddressingMode mode, CPU *cpu)
         cpu->cycles -= 1;
     }
     else cpu_mem_write_u16(cpu, addr, cpu->register_x);
+
+    if (mode == DIRECT || mode == DIRECT_Y)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
+    }
 }
 void cpu_sty(enum AddressingMode mode, CPU *cpu)
 {
@@ -1217,6 +1617,12 @@ void cpu_sty(enum AddressingMode mode, CPU *cpu)
         cpu->cycles -= 1;
     }
     else cpu_mem_write_u16(cpu, addr, cpu->register_y);
+
+    if (mode == DIRECT || mode == DIRECT_X)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
+    }
 }
 void cpu_stz(enum AddressingMode mode, CPU *cpu)
 {
@@ -1228,6 +1634,12 @@ void cpu_stz(enum AddressingMode mode, CPU *cpu)
         cpu->cycles -= 1;
     }
     else cpu_mem_write_u16(cpu, addr, cpu_mem_read_u16(cpu, 0));
+
+    if (mode == DIRECT || mode == DIRECT_X)
+    {
+        if ((cpu->register_direct & 0xFF) != 0)
+            cpu->cycles += 1;
+    }
 }
 
 void cpu_mvn(enum AddressingMode mode, CPU *cpu)
@@ -1279,6 +1691,9 @@ void cpu_pei(enum AddressingMode mode, CPU *cpu)
     unsigned int addr = cpu_get_operand_address(cpu, mode);
     cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu_mem_read_u16(cpu, addr));
     cpu->stack_pointer -= 2;
+
+    if ((cpu->register_direct & 0xFF) != 0)
+        cpu->cycles += 1;
 }
 void cpu_per(enum AddressingMode mode, CPU *cpu)
 {
@@ -1332,14 +1747,14 @@ void cpu_pla(enum AddressingMode mode, CPU *cpu)
     {
         cpu->stack_pointer += 1;
         cpu->register_a = cpu_mem_read_u8(cpu, cpu->stack_pointer);
-        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_a);
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_a);
         cpu->cycles -= 1;
     }
     else
     {
         cpu->stack_pointer += 2;
         cpu->register_a = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1);
-        cpu_set_negative_16bit(&cpu->status, cpu->register_a);
+        cpu_set_negative_u16(&cpu->status, cpu->register_a);
     }
 
     cpu_set_zero_flag(&cpu->status, cpu->register_a);
@@ -1350,14 +1765,14 @@ void cpu_plx(enum AddressingMode mode, CPU *cpu)
     {
         cpu->stack_pointer += 1;
         cpu->register_x = cpu_mem_read_u8(cpu, cpu->stack_pointer);
-        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_x);
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_x);
         cpu->cycles -= 1;
     }
     else
     {
         cpu->stack_pointer += 2;
         cpu->register_x = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1);
-        cpu_set_negative_16bit(&cpu->status, cpu->register_x);
+        cpu_set_negative_u16(&cpu->status, cpu->register_x);
     }
 
     cpu_set_zero_flag(&cpu->status, cpu->register_x);
@@ -1368,14 +1783,14 @@ void cpu_ply(enum AddressingMode mode, CPU *cpu)
     {
         cpu->stack_pointer += 1;
         cpu->register_y = cpu_mem_read_u8(cpu, cpu->stack_pointer);
-        cpu_set_negative_8bit(&cpu->status, (unsigned char)cpu->register_y);
+        cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_y);
         cpu->cycles -= 1;
     }
     else
     {
         cpu->stack_pointer += 2;
         cpu->register_y = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1);
-        cpu_set_negative_16bit(&cpu->status, cpu->register_y);
+        cpu_set_negative_u16(&cpu->status, cpu->register_y);
     }
 
     cpu_set_zero_flag(&cpu->status, cpu->register_y);
@@ -1405,13 +1820,13 @@ void cpu_plb(enum AddressingMode mode, CPU *cpu)
 {
     cpu->stack_pointer += 1;
     cpu->program_bank = cpu_mem_read_u8(cpu, cpu->stack_pointer);
-    cpu_set_negative_8bit(&cpu->status, cpu->program_bank);
+    cpu_set_negative_u8(&cpu->status, cpu->program_bank);
 }
 void cpu_pld(enum AddressingMode mode, CPU *cpu)
 {
     cpu->stack_pointer += 2;
     cpu->register_direct = cpu_mem_read_u16(cpu, cpu->stack_pointer - 1);
-    cpu_set_negative_16bit(&cpu->status, cpu->register_direct);
+    cpu_set_negative_u16(&cpu->status, cpu->register_direct);
 }
 void cpu_plp(enum AddressingMode mode, CPU *cpu)
 {
@@ -1567,11 +1982,7 @@ void cpu_txs(enum AddressingMode mode, CPU *cpu)
             cpu->register_x &= 0xFF;
             cpu->stack_pointer = cpu->register_x;
         }
-        else
-        {
-            cpu->stack_pointer = cpu->register_x;
-        }
-        
+        else cpu->stack_pointer = cpu->register_x;
     }
 }
 void cpu_txy(enum AddressingMode mode, CPU *cpu)
@@ -1671,9 +2082,8 @@ void cpu_tyx(enum AddressingMode mode, CPU *cpu)
 void cpu_tcd(enum AddressingMode mode, CPU *cpu)
 {
     cpu->register_direct = cpu->register_a;
-
-    cpu_set_zero_flag_u16(&cpu->status, cpu->register_direct);
-    cpu_set_negative_16bit(&cpu->status, cpu->register_direct);
+    cpu_set_zero_flag(&cpu->status, cpu->register_direct);
+    cpu_set_negative_u16(&cpu->status, cpu->register_direct);
 }
 void cpu_tcs(enum AddressingMode mode, CPU *cpu)
 {
@@ -1685,16 +2095,14 @@ void cpu_tcs(enum AddressingMode mode, CPU *cpu)
 void cpu_tdc(enum AddressingMode mode, CPU *cpu)
 {
     cpu->register_a = cpu->register_direct;
-
-    cpu_set_zero_flag_u16(&cpu->status, cpu->register_a);
-    cpu_set_negative_16bit(&cpu->status, cpu->register_a);
+    cpu_set_zero_flag(&cpu->status, cpu->register_a);
+    cpu_set_negative_u16(&cpu->status, cpu->register_a);
 }
 void cpu_tsc(enum AddressingMode mode, CPU *cpu)
 {
     cpu->register_a = cpu->stack_pointer;
-
-    cpu_set_zero_flag_u16(&cpu->status, cpu->register_a);
-    cpu_set_negative_16bit(&cpu->status, cpu->register_a);
+    cpu_set_zero_flag(&cpu->status, cpu->register_a);
+    cpu_set_negative_u16(&cpu->status, cpu->register_a);
 }
 
 void cpu_xba(enum AddressingMode mode, CPU *cpu)
@@ -1704,8 +2112,8 @@ void cpu_xba(enum AddressingMode mode, CPU *cpu)
 
     cpu->register_a = (unsigned short)reg_h >> 8 | (unsigned short)reg_l << 8;
 
-    cpu_set_zero_flag_u16(&cpu->status, cpu->register_a);
-    cpu_set_negative_16bit(&cpu->status, cpu->register_a);
+    cpu_set_zero_flag(&cpu->status, cpu->register_a);
+    cpu_set_negative_u16(&cpu->status, cpu->register_a);
 }
 
 void cpu_xce(enum AddressingMode mode, CPU *cpu)
@@ -1734,41 +2142,24 @@ void cpu_xce(enum AddressingMode mode, CPU *cpu)
     }
 }
 
-void cpu_set_overflow_flag_u8(unsigned char *status, unsigned char result)
+void cpu_set_overflow_flag_u8(unsigned char *status, unsigned char reg, 
+                            unsigned char arg, unsigned char result)
 {
-    /*
-    if (~(cpu->register_a ^ arg) & (cpu->register_a ^ sum) & 0x80)
-        cpu->status = cpu->status | Overflow_Flag;
-    else 
-        cpu->status = cpu->status & 0b10111111;
-    */
-
-    // this is absolutely not right(?)
-
-    if (result & 0b01000000)    *status |= OVERFLOW_FLAG;
-    else                        *status &= 0b10111111;
+    if (~(reg ^ arg) & (reg ^ result) & 0x80)   
+        *status |= OVERFLOW_FLAG;
+    else                                        
+        *status &= 0b10111111;
 }
-void cpu_set_overflow_flag_u16(unsigned char *status, unsigned short result)
+void cpu_set_overflow_flag_u16(unsigned char *status, unsigned short reg, 
+                            unsigned short arg, unsigned short result)
 {
-    // this is absolutely not right(?)
-    
-    if (result & 0x4000)        *status |= OVERFLOW_FLAG;
-    else                        *status &= 0b10111111;
+    if (~(reg ^ arg) & (reg ^ result) & 0x8000) 
+        *status |= OVERFLOW_FLAG;
+    else                                        
+        *status &= 0b10111111;
 }
 
 void cpu_set_zero_flag(unsigned char *status, unsigned short result)
-{
-    if (result == 0)    *status |= ZERO_FLAG;
-    else                *status &= 0b11111101;
-}
-
-void cpu_set_zero_flag_u8(unsigned char *status, unsigned char result)
-{
-    if (result == 0)    *status |= ZERO_FLAG;
-    else                *status &= 0b11111101;
-}
-
-void cpu_set_zero_flag_u16(unsigned char *status, unsigned short result)
 {
     if (result == 0)    *status |= ZERO_FLAG;
     else                *status &= 0b11111101;
@@ -1810,13 +2201,13 @@ void cpu_set_mem_zero_flag(unsigned char *status, unsigned short result)
     }
 }
 
-void cpu_set_negative_8bit(unsigned char *status, unsigned char result)
+void cpu_set_negative_u8(unsigned char *status, unsigned char result)
 {
     if (result & 0x80)      *status |= NEGATIVE_FLAG;
     else                    *status &= 0b011111111;
 }
 
-void cpu_set_negative_16bit(unsigned char *status, unsigned short result)
+void cpu_set_negative_u16(unsigned char *status, unsigned short result)
 {
     if (result & 0x8000)    *status |= NEGATIVE_FLAG;
     else                    *status &= 0b011111111;
@@ -3172,4 +3563,7 @@ void cpu_interpret(CPU *cpu)
             cpu->program_counter += 4;
             break;
     }
+
+    // check for interrupts
+
 }
