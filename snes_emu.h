@@ -63,6 +63,8 @@ extern void cpu_mem_write_u8(CPU*, unsigned int pos, unsigned char data);
 extern unsigned short cpu_mem_read_u16(CPU*, unsigned int pos);
 extern void cpu_mem_write_u16(CPU*, unsigned int pos, unsigned short data);
 
+extern unsigned int cpu_mem_read_u24(CPU*, unsigned int pos);
+
 extern void cpu_adc(enum AddressingMode, CPU*);
 extern void cpu_sbc(enum AddressingMode, CPU*);
 
