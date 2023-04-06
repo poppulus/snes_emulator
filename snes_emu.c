@@ -8,8 +8,11 @@ unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode)
     
     switch (mode)
     {
-        default: break;
+        default:
         case ACCUMULATOR:
+        case SOURCE_DEST:
+        case IMPLIED:
+            // these are instruction specific
             break;
         case ABSOLUTE:
             opaddr = (unsigned int)(cpu->data_bank << 16) | cpu_mem_read_u16(cpu, cpu->program_counter + 1);
@@ -33,30 +36,74 @@ unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode)
             opaddr = (unsigned int)(cpu->program_bank << 16) | ((base_16 + cpu->register_x) % 0x10000);
             break;
         case DIRECT:
-            base_16 = (unsigned short)cpu_mem_read_u8(cpu, cpu->program_counter + 1);
-            opaddr = (cpu->register_direct + base_16) % 0x10000;
+            base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+            opaddr = (cpu->register_direct + base_8) % 0x10000;
             break;
         case DIRECT_X:
-            base_16 = (unsigned short)cpu_mem_read_u8(cpu, cpu->program_counter + 1);
-            opaddr = cpu->register_direct + base_16 + cpu->register_x;
+            if (cpu->emulation_mode && (cpu->register_direct & 0xFF) == 0)
+            {
+                base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+                opaddr = ((cpu->register_direct & 0xFF00) + base_8 + cpu->register_x) % 0x10000;
+            }
+            else
+            {
+                base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+                opaddr = (cpu->register_direct + base_8 + cpu->register_x) % 0x10000;
+            }
             break;
         case DIRECT_Y:
-            base_16 = (unsigned short)cpu_mem_read_u8(cpu, cpu->program_counter + 1);
-            opaddr = cpu->register_direct + base_16 + cpu->register_x;
+            if (cpu->emulation_mode && (cpu->register_direct & 0xFF) == 0)
+            {
+                base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+                opaddr = ((cpu->register_direct & 0xFF00) + base_8 + cpu->register_y) % 0x10000;
+            }
+            else
+            {
+                base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+                opaddr = (cpu->register_direct + base_8 + cpu->register_y) % 0x10000;
+            }
             break;
         case DIRECT_SHORT:
-            base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
-            opaddr = (unsigned int)(cpu->data_bank << 16) | cpu_mem_read_u16(cpu, cpu->register_direct + (unsigned short)base_8);
+            if (cpu->emulation_mode && (cpu->register_direct & 0xFF) == 0)
+            {
+                base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+                base_16 = cpu_mem_read_u16(cpu, (cpu->register_direct & 0xFF00) + base_8);
+                opaddr = (unsigned int)(cpu->data_bank << 16) | base_16;
+            }
+            else
+            {
+                base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+                base_16 = cpu_mem_read_u16(cpu, (cpu->register_direct + base_8) % 0x10000);
+                opaddr = (unsigned int)(cpu->data_bank << 16) | base_16;
+            }
             break;
         case DIRECT_SHORT_X:
-            base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
-            base_16 = (unsigned short)(base_8 + cpu->register_direct + cpu->register_x) % 0x10000;
-            opaddr = (unsigned int)(cpu->data_bank << 16) | cpu_mem_read_u16(cpu, base_16);
+            if (cpu->emulation_mode && (cpu->register_direct & 0xFF) == 0)
+            {
+                base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+                base_16 = ((cpu->register_direct & 0xFF00) + base_8 + cpu->register_x) % 0x10000;
+                opaddr = (unsigned int)(cpu->data_bank << 16) | cpu_mem_read_u16(cpu, base_16);
+            }
+            else
+            {
+                base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+                base_16 = (cpu->register_direct + base_8 + cpu->register_x) % 0x10000;
+                opaddr = (unsigned int)(cpu->data_bank << 16) | cpu_mem_read_u16(cpu, base_16);
+            }
             break;
         case DIRECT_SHORT_Y:
-            base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
-            base_16 = (unsigned short)(base_8 + cpu->register_direct) % 0x10000;
-            opaddr = ((unsigned int)(cpu->data_bank << 16) | (unsigned short)(cpu_mem_read_u16(cpu, base_16)) + cpu->register_y);
+            if (cpu->emulation_mode && (cpu->register_direct & 0xFF) == 0)
+            {
+                base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+                base_16 = cpu_mem_read_u16(cpu, (cpu->register_direct & 0xFF00) + base_8);
+                opaddr = (unsigned int)((cpu->data_bank << 16) | base_16) + cpu->register_y;
+            }
+            else
+            {
+                base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+                base_16 = cpu_mem_read_u16(cpu, (base_8 + cpu->register_direct) % 0x10000);
+                opaddr = (unsigned int)((cpu->data_bank << 16) | base_16) + cpu->register_y;
+            }
             break;
         case DIRECT_LONG:
             base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
@@ -66,35 +113,27 @@ unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode)
             base_8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
             opaddr = cpu_mem_read_u24(cpu, (cpu->register_direct + base_8) % 0x10000) + cpu->register_y;
             break;
-        case IMMEDIATE:
-            opaddr = cpu->program_counter + 1;
-            break;
-        case IMPLIED:
-            break;
         case LONG:
             opaddr = cpu_mem_read_u24(cpu, cpu->program_counter + 1);
             break;
         case LONG_X:
-            opaddr = cpu_mem_read_u24(cpu, (unsigned short)(cpu->program_counter + 1 + cpu->register_x));
+            opaddr = cpu_mem_read_u24(cpu, cpu->program_counter + 1 + cpu->register_x % 0x10000);
             break;
+        case IMMEDIATE:
         case RELATIVE_8:
-            opaddr = cpu->program_counter + 1;
-            break;
         case RELATIVE_16:
-            opaddr = cpu->program_counter + 1;
-            break;
-        case SOURCE_DEST:
+            opaddr = (unsigned int)(cpu->program_bank << 16) | (cpu->program_counter + 1);
             break;
         case STACK_S:
-            opaddr = (unsigned short)cpu_mem_read_u8(cpu, cpu->program_counter + 1) + cpu->stack_pointer;
+            opaddr = (unsigned short)(cpu_mem_read_u8(cpu, cpu->program_counter + 1) + cpu->stack_pointer);
             break;
         case STACK_S_Y:
-            base_16 = cpu_mem_read_u16(cpu, (unsigned short)(cpu->program_counter + 1 + cpu->stack_pointer));
+            base_16 = cpu_mem_read_u16(cpu, (cpu->program_counter + 1 + cpu->stack_pointer) % 0x10000);
             opaddr = ((unsigned int)cpu->data_bank << 16) | base_16;
             break;
     }
 
-    return opaddr;
+    return opaddr % 0x1000000;
 }
 
 unsigned char cpu_mem_read_u8(CPU *cpu, unsigned int pos)
@@ -1789,9 +1828,19 @@ void cpu_pea(enum AddressingMode mode, CPU *cpu)
 }
 void cpu_pei(enum AddressingMode mode, CPU *cpu)
 {
-    unsigned int addr = cpu_get_operand_address(cpu, mode);
-    cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu_mem_read_u16(cpu, addr));
-    cpu->stack_pointer -= 2;
+    if (cpu->emulation_mode && (cpu->register_direct & 0xFF) == 0)
+    {
+        unsigned char base8 = cpu_mem_read_u8(cpu, cpu->program_counter + 1);
+        unsigned int short addr = ((cpu->register_direct & 0xFF00) + base8) % 0x10000;
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1 % 0x100, cpu_mem_read_u16(cpu, addr));
+        cpu->stack_pointer -= 2 % 0x100;
+    }
+    else
+    {
+        unsigned int addr = cpu_get_operand_address(cpu, mode);
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu_mem_read_u16(cpu, addr));
+        cpu->stack_pointer -= 2;
+    }
 
     if ((cpu->register_direct & 0xFF) != 0)
         cpu->cycles += 1;
@@ -2266,42 +2315,6 @@ void cpu_set_zero_flag(unsigned char *status, unsigned short result)
     else                *status &= 0b11111101;
 }
 
-void cpu_set_idx_zero_flag(unsigned char *status, unsigned short result)
-{
-    if (*status & INDEX_WIDTH)
-    {
-        if ((unsigned char)result == 0)
-            *status |= ZERO_FLAG;
-        else
-            *status &= 0b11111101;
-    }
-    else
-    {
-        if (result == 0)
-            *status |= ZERO_FLAG;
-        else
-            *status &= 0b11111101;
-    }
-}
-
-void cpu_set_mem_zero_flag(unsigned char *status, unsigned short result)
-{
-    if (*status & MEMORY_WIDTH)
-    {
-        if ((unsigned char)result == 0) 
-            *status |= ZERO_FLAG;
-        else
-            *status &= 0b11111101;
-    }
-    else
-    {
-        if (result == 0)
-            *status |= ZERO_FLAG;
-        else
-            *status &= 0b11111101;
-    }
-}
-
 void cpu_set_negative_u8(unsigned char *status, unsigned char result)
 {
     if (result & 0x80)      *status |= NEGATIVE_FLAG;
@@ -2312,53 +2325,6 @@ void cpu_set_negative_u16(unsigned char *status, unsigned short result)
 {
     if (result & 0x8000)    *status |= NEGATIVE_FLAG;
     else                    *status &= 0b011111111;
-}
-
-void cpu_set_mem_negative(unsigned char *status, unsigned short result)
-{
-    if (*status & MEMORY_WIDTH)
-    {
-        if ((unsigned char)result & 0b10000000)
-            *status |= NEGATIVE_FLAG;
-        else 
-            *status &= 0b011111111;
-    }
-    else
-    {
-        if (result & 0b1000000000000000)
-            *status |= NEGATIVE_FLAG;
-        else 
-            *status &= 0b011111111;
-    }
-}
-
-void cpu_set_idx_negative(unsigned char *status, unsigned short result)
-{
-    if (*status & INDEX_WIDTH)
-    {
-        if ((unsigned char)result & 0b10000000)
-            *status |= NEGATIVE_FLAG;
-        else 
-            *status &= 0b011111111;
-    }
-    else
-    {
-        if (result & 0b1000000000000000)
-            *status |= NEGATIVE_FLAG;
-        else 
-            *status &= 0b011111111;
-    }
-}
-
-void cpu_set_mem_flag(unsigned char *status)
-{
-    *status |= MEMORY_WIDTH;
-}
-
-void cpu_set_idx_flag(unsigned char *status, unsigned short *reg)
-{
-    *status |= INDEX_WIDTH;
-    *reg &= 0xFF;
 }
 
 void cpu_interpret(CPU *cpu)
@@ -2431,7 +2397,7 @@ void cpu_interpret(CPU *cpu)
         case 0x09:
             cpu_ora(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
             break;
         case 0x0A:
             cpu_asl(ACCUMULATOR, cpu);
@@ -2591,7 +2557,7 @@ void cpu_interpret(CPU *cpu)
         case 0x29:
             cpu_and(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
             break;
         case 0x2A:
             cpu_rol(ACCUMULATOR, cpu);
@@ -2751,7 +2717,7 @@ void cpu_interpret(CPU *cpu)
         case 0x49:
             cpu_eor(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
             break;
         case 0x4A:
             cpu_lsr(ACCUMULATOR, cpu);
@@ -2911,7 +2877,7 @@ void cpu_interpret(CPU *cpu)
         case 0x69:
             cpu_adc(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
             break;
         case 0x6A:
             cpu_ror(ACCUMULATOR, cpu);
@@ -3071,7 +3037,7 @@ void cpu_interpret(CPU *cpu)
         case 0x89:
             cpu_bit(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
             break;
         case 0x8A:
             cpu_txa(IMPLIED, cpu);
@@ -3186,7 +3152,7 @@ void cpu_interpret(CPU *cpu)
         case 0xA0:
             cpu_ldy(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH);
             break;
         case 0xA1:
             cpu_lda(DIRECT_SHORT_X, cpu);
@@ -3196,7 +3162,7 @@ void cpu_interpret(CPU *cpu)
         case 0xA2:
             cpu_ldx(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH);
             break;
         case 0xA3:
             cpu_lda(STACK_S, cpu);
@@ -3231,7 +3197,7 @@ void cpu_interpret(CPU *cpu)
         case 0xA9:
             cpu_lda(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
             break;
         case 0xAA:
             cpu_tax(IMPLIED, cpu);
@@ -3346,7 +3312,7 @@ void cpu_interpret(CPU *cpu)
         case 0xC0:
             cpu_cpy(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH);
             break;
         case 0xC1:
             cpu_cmp(DIRECT_SHORT_X, cpu);
@@ -3391,7 +3357,7 @@ void cpu_interpret(CPU *cpu)
         case 0xC9:
             cpu_cmp(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
             break;
         case 0xCA:
             cpu_dex(IMPLIED, cpu);
@@ -3506,7 +3472,7 @@ void cpu_interpret(CPU *cpu)
         case 0xE0:
             cpu_cpx(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH);
             break;
         case 0xE1:
             cpu_sbc(DIRECT_SHORT_X, cpu);
@@ -3551,7 +3517,7 @@ void cpu_interpret(CPU *cpu)
         case 0xE9:
             cpu_sbc(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3;
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
             break;
         case 0xEA:
             cpu_nop(IMPLIED);

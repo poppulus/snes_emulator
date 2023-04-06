@@ -200,7 +200,4 @@ extern void cpu_set_zero_flag(unsigned char *status, unsigned short result);
 extern void cpu_set_negative_u8(unsigned char *status, unsigned char result);
 extern void cpu_set_negative_u16(unsigned char *status, unsigned short result);
 
-extern void cpu_set_mem_flag(unsigned char*);
-extern void cpu_set_idx_flag(unsigned char*, unsigned short*);
-
 extern void cpu_interpret(CPU*);
