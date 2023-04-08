@@ -1,5 +1,138 @@
 #include "snes_emu.h"
 
+unsigned int bus_addr_get(WMADD addr)
+{
+    return (unsigned int)(addr.hi << 16) | (unsigned short)addr.mi << 8 | addr.lo;
+}
+
+unsigned char bus_joypad_read(JOYPAD *joypad)
+{
+    return 0;
+}
+
+void bus_joypad_write(JOYPAD joypad[], unsigned char data)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        joypad[i].strobe = data & 1;
+
+        if (joypad[i].strobe)
+            joypad[i].index = 0;
+    }
+}
+
+unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
+{
+    unsigned char data = 0;
+
+    switch (pos)
+    {
+        case WMDATA:
+            data = cpu->wram[bus_addr_get(cpu->address)];
+            break;
+        case RDMPYL:
+            data = cpu->prodrem.lo;
+            break;
+        case RDMPYH:
+            data = cpu->prodrem.hi;
+            break;
+        case JOYSER0:
+            break;
+        case JOYSER1:
+            break;
+        case JOY1L:
+            data = bus_joypad_read(&cpu->bus.joypad[0]);
+            data = cpu->bus.joypad[0].btn_status & 0xFF;
+            break;
+        case JOY1H:
+            data = bus_joypad_read(&cpu->bus.joypad[0]);
+            data = cpu->bus.joypad[0].btn_status >> 8;
+            break;
+        case JOY2L:
+            data = bus_joypad_read(&cpu->bus.joypad[1]);
+            data = cpu->bus.joypad[1].btn_status & 0xFF;
+            break;
+        case JOY2H:
+            data = bus_joypad_read(&cpu->bus.joypad[1]);
+            data = cpu->bus.joypad[1].btn_status >> 8;
+            break;
+        case JOY3L:
+            data = bus_joypad_read(&cpu->bus.joypad[2]);
+            data = cpu->bus.joypad[2].btn_status & 0xFF;
+            break;
+        case JOY3H:
+            data = bus_joypad_read(&cpu->bus.joypad[2]);
+            data = cpu->bus.joypad[2].btn_status >> 8;
+            break;
+        case JOY4L:
+            data = bus_joypad_read(&cpu->bus.joypad[3]);
+            data = cpu->bus.joypad[3].btn_status & 0xFF;
+            break;
+        case JOY4H:
+            data = bus_joypad_read(&cpu->bus.joypad[3]);
+            data = cpu->bus.joypad[3].btn_status >> 8;
+            break;
+    }
+
+    return data;
+}
+
+void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
+{
+    switch (pos)
+    {
+        case WMDATA:
+            cpu->wram[bus_addr_get(cpu->address)] = data;
+            break;
+        case WMADDL:
+            cpu->address.lo = data;
+            break;
+        case WMADDM:
+            cpu->address.mi = data;
+            break;
+        case WMADDH:
+            cpu->address.hi = data;
+            break;
+        case NMITIMEN:
+            cpu->nmitimen = data;
+            break;
+        case JOYOUT:
+            bus_joypad_write(cpu->bus.joypad, data);
+            break;
+        case WRIO:
+            break;
+        case WRMPYA:
+            cpu->multiply._a = data;
+            break;
+        case WRMPYB:
+            cpu->multiply._b = data;
+            // also starts multiplication process
+            break;
+        case WRDIVL:
+            cpu->dividend.lo = data;
+            break;
+        case WRDIVH:
+            cpu->dividend.hi = data;
+            // starts division process and puts result in RDDIV (quotient) and RDMPY (remainder)
+            break;
+        case WRDIVB:
+            cpu->divisor = data;
+            break;
+        case HTIMEL:
+            cpu->htimer &= (unsigned short)data;
+            break;
+        case HTIMEH:
+            cpu->htimer &= (unsigned short)(data << 8);
+            break;
+        case VTIMEL:
+            cpu->vtimer &= (unsigned short)data;
+            break;
+        case VTIMEH:
+            cpu->vtimer &= (unsigned short)(data << 8);
+            break;
+    }
+}
+
 unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode)
 {
     unsigned int    opaddr = 0;
@@ -138,17 +271,17 @@ unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode)
 
 unsigned char cpu_mem_read_u8(CPU *cpu, unsigned int pos)
 {
-    return cpu->wram[pos];
+    return bus_mem_read(cpu, pos);
 }
 void cpu_mem_write_u8(CPU *cpu, unsigned int pos, unsigned char data)
 {
-    cpu->wram[pos] = data;
+    bus_mem_write(cpu, pos, data);
 }
 
 unsigned short cpu_mem_read_u16(CPU *cpu, unsigned int pos)
 {
-    unsigned short  lo = cpu->wram[pos], 
-                    hi = cpu->wram[pos + 1];
+    unsigned short  lo = cpu_mem_read_u8(cpu, pos), 
+                    hi = cpu_mem_read_u8(cpu, pos + 1);
 
     return (hi << 8) | lo;
 }
@@ -158,17 +291,17 @@ void cpu_mem_write_u16(CPU *cpu, unsigned int pos, unsigned short data)
     unsigned char   hi = data >> 8, 
                     lo = data & 0xFF;
 
-    cpu->wram[pos] = lo;
-    cpu->wram[pos + 1] = hi;
+    cpu_mem_write_u8(cpu, pos, lo);
+    cpu_mem_write_u8(cpu, pos + 1, hi);
 }
 
 unsigned int cpu_mem_read_u24(CPU *cpu, unsigned int pos)
 {
-    unsigned short  lo = cpu->wram[pos], 
-                    mi = cpu->wram[pos + 1],
-                    hi = cpu->wram[pos + 2];
+    unsigned char   lo = cpu_mem_read_u8(cpu, pos), 
+                    mi = cpu_mem_read_u8(cpu, pos + 1),
+                    hi = cpu_mem_read_u8(cpu, pos + 2);
 
-    return (unsigned int)(hi << 16) | (unsigned int)(mi << 8) | (unsigned int)lo;
+    return (unsigned int)(hi << 16) | (unsigned short)(mi << 8) | lo;
 }
 
 void cpu_adc(enum AddressingMode mode, CPU *cpu)

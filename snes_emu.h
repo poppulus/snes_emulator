@@ -1,5 +1,56 @@
 #define WRAM_SIZE 131072
 
+#define APUIO0      0x2140
+#define APUIO1      0x2141
+#define APUIO2      0x2142
+#define APUIO3      0x2143
+
+#define WMDATA      0x2180
+#define WMADDL      0x2181
+#define WMADDM      0x2182
+#define WMADDH      0x2183
+#define WRIO        0x4201
+#define WRMPYA      0x4202
+#define WRMPYB      0x4203
+#define WRDIVL      0x4204
+#define WRDIVH      0x4205
+#define WRDIVB      0x4206
+
+#define RDNMI       0x4210
+#define RDIO        0x4213
+#define RDDIVL      0x4214
+#define RDDIVH      0x4215
+#define RDMPYL      0x4216
+#define RDMPYH      0x4217
+
+#define NMITIMEN    0x4200
+
+#define HTIMEL      0x4207
+#define HTIMEH      0x4208
+
+#define VTIMEL      0x4209
+#define VTIMEH      0x420A
+
+#define MDMAEN      0x420B
+#define HDMAEN      0x420C
+
+#define MEMSEL      0x420D
+
+#define TIMEUP      0x4211
+
+#define HVBJOY      0x4212
+
+#define JOYOUT      0x4016
+#define JOYSER0     0x4016
+#define JOYSER1     0x4017
+#define JOY1L       0x4218
+#define JOY1H       0x4219
+#define JOY2L       0x421A
+#define JOY2H       0x421B
+#define JOY3L       0x421C
+#define JOY3H       0x421D
+#define JOY4L       0x421E
+#define JOY4H       0x421F
 
 enum AddressingMode
 {
@@ -43,17 +94,65 @@ enum ProcessorStatus
     NEGATIVE_FLAG   = 0b10000000
 };
 
+typedef struct
+{
+    unsigned char lo, mi, hi;
+} WMADD;
+
+typedef struct
+{
+    unsigned char _a, _b;
+} WRMPY;
+
+typedef struct
+{
+    unsigned char lo, hi;
+} WRDIV;
+
+typedef struct
+{
+    unsigned char lo, hi;
+} RDMPY;
+
+typedef struct 
+{
+    unsigned short btn_status;
+    unsigned char index;
+    unsigned char strobe:1;
+} JOYPAD;
+
+typedef struct
+{
+    JOYPAD joypad[4];
+} BUS;
+
 typedef struct 
 {
     unsigned int    cycles;
 
     unsigned short  register_a, register_x, register_y, 
-                    register_direct, program_counter, stack_pointer;
+                    register_direct, program_counter, stack_pointer,
+                    vtimer, htimer;
 
-    unsigned char   wram[WRAM_SIZE], data_bank, program_bank, status;
+    unsigned char   wram[WRAM_SIZE], data_bank, program_bank, status, nmitimen, divisor;
 
     unsigned char   emulation_mode:1, interrupt:1, stop:1, wait:1;
+
+    WMADD address;
+    WRMPY multiply;
+    WRDIV dividend;
+    RDMPY prodrem;
+
+    BUS bus;
 } CPU;
+
+extern void bus_increment_waddr();
+extern unsigned int bus_addr_get(WMADD);
+
+extern unsigned char bus_joypad_read(JOYPAD*);
+extern void bus_joypad_write(JOYPAD*, unsigned char data);
+
+extern unsigned char bus_mem_read(CPU*, unsigned int pos);
 
 extern unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode);
 
