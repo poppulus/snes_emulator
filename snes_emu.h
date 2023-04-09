@@ -1,4 +1,4 @@
-#define WRAM_SIZE 131072
+#define WRAM_SIZE   0x01FFFF
 
 #define APUIO0      0x2140
 #define APUIO1      0x2141
@@ -128,7 +128,7 @@ typedef struct
 
 typedef struct 
 {
-    unsigned int    cycles;
+    unsigned long   cycles;
 
     unsigned short  register_a, register_x, register_y, 
                     register_direct, program_counter, stack_pointer,
@@ -146,10 +146,11 @@ typedef struct
     BUS bus;
 } CPU;
 
-extern void bus_increment_waddr();
 extern unsigned int bus_addr_get(WMADD);
+extern void bus_addr_set(WMADD*, unsigned int data);
+extern void bus_increment_wmadd(WMADD*);
 
-extern unsigned char bus_joypad_read(JOYPAD*);
+extern unsigned char bus_joypad_read(JOYPAD*, unsigned char hi);
 extern void bus_joypad_write(JOYPAD*, unsigned char data);
 
 extern unsigned char bus_mem_read(CPU*, unsigned int pos);

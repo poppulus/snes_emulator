@@ -1,13 +1,42 @@
 #include "snes_emu.h"
 
+void bus_addr_set(WMADD *addr, unsigned int data)
+{
+    addr->hi = (unsigned char)(data >> 16);
+    addr->mi = (unsigned char)(data >> 8);
+    addr->lo = (unsigned char)(data & 0xFF);
+}
+
 unsigned int bus_addr_get(WMADD addr)
 {
     return (unsigned int)(addr.hi << 16) | (unsigned short)addr.mi << 8 | addr.lo;
 }
 
-unsigned char bus_joypad_read(JOYPAD *joypad)
+void bus_increment_wmadd(WMADD *addr)
 {
-    return 0;
+    unsigned char   lo = addr->lo, 
+                    mi = addr->mi;
+
+    if (++addr->lo < lo)
+    {
+        if (++addr->mi < mi)
+            addr->hi = 1;
+    }
+}
+
+unsigned char bus_joypad_read(JOYPAD *joypad, unsigned char hi)
+{
+    unsigned char result;
+
+    if (joypad->index > (hi ? 15 : 7))
+        return 1;
+
+    result = (joypad->btn_status & (1 << joypad->index)) >> joypad->index;
+
+    if (!joypad->strobe && joypad->index <= (hi ? 15 : 7))
+        joypad->index += 1;
+
+    return result;
 }
 
 void bus_joypad_write(JOYPAD joypad[], unsigned char data)
@@ -27,8 +56,30 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
 
     switch (pos)
     {
+        case APUIO0:
+            break;
+        case APUIO1:
+            break;
+        case APUIO2:
+            break;
+        case APUIO3:
+            break;
         case WMDATA:
             data = cpu->wram[bus_addr_get(cpu->address)];
+            break;
+        case RDNMI:
+            break;
+        case TIMEUP:
+            break;
+        case HVBJOY:
+            break;
+        case RDIO:
+            break;
+        case RDDIVL:
+            data = cpu->dividend.lo;
+            break;
+        case RDDIVH:
+            data = cpu->dividend.hi;
             break;
         case RDMPYL:
             data = cpu->prodrem.lo;
@@ -41,36 +92,28 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
         case JOYSER1:
             break;
         case JOY1L:
-            data = bus_joypad_read(&cpu->bus.joypad[0]);
-            data = cpu->bus.joypad[0].btn_status & 0xFF;
+            data = bus_joypad_read(&cpu->bus.joypad[0], 0);
             break;
         case JOY1H:
-            data = bus_joypad_read(&cpu->bus.joypad[0]);
-            data = cpu->bus.joypad[0].btn_status >> 8;
+            data = bus_joypad_read(&cpu->bus.joypad[0], 1);
             break;
         case JOY2L:
-            data = bus_joypad_read(&cpu->bus.joypad[1]);
-            data = cpu->bus.joypad[1].btn_status & 0xFF;
+            data = bus_joypad_read(&cpu->bus.joypad[1], 0);
             break;
         case JOY2H:
-            data = bus_joypad_read(&cpu->bus.joypad[1]);
-            data = cpu->bus.joypad[1].btn_status >> 8;
+            data = bus_joypad_read(&cpu->bus.joypad[1], 1);
             break;
         case JOY3L:
-            data = bus_joypad_read(&cpu->bus.joypad[2]);
-            data = cpu->bus.joypad[2].btn_status & 0xFF;
+            data = bus_joypad_read(&cpu->bus.joypad[2], 0);
             break;
         case JOY3H:
-            data = bus_joypad_read(&cpu->bus.joypad[2]);
-            data = cpu->bus.joypad[2].btn_status >> 8;
+            data = bus_joypad_read(&cpu->bus.joypad[2], 1);
             break;
         case JOY4L:
-            data = bus_joypad_read(&cpu->bus.joypad[3]);
-            data = cpu->bus.joypad[3].btn_status & 0xFF;
+            data = bus_joypad_read(&cpu->bus.joypad[3], 0);
             break;
         case JOY4H:
-            data = bus_joypad_read(&cpu->bus.joypad[3]);
-            data = cpu->bus.joypad[3].btn_status >> 8;
+            data = bus_joypad_read(&cpu->bus.joypad[3], 1);
             break;
     }
 
@@ -81,6 +124,14 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
 {
     switch (pos)
     {
+        case APUIO0:
+            break;
+        case APUIO1:
+            break;
+        case APUIO2:
+            break;
+        case APUIO3:
+            break;
         case WMDATA:
             cpu->wram[bus_addr_get(cpu->address)] = data;
             break;
@@ -91,10 +142,16 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
             cpu->address.mi = data;
             break;
         case WMADDH:
-            cpu->address.hi = data;
+            cpu->address.hi = data & 1;
             break;
         case NMITIMEN:
             cpu->nmitimen = data;
+            break;
+        case MDMAEN:
+            break;
+        case HDMAEN:
+            break;
+        case MEMSEL:
             break;
         case JOYOUT:
             bus_joypad_write(cpu->bus.joypad, data);
@@ -119,18 +176,20 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
             cpu->divisor = data;
             break;
         case HTIMEL:
-            cpu->htimer &= (unsigned short)data;
+            cpu->htimer &= data;
             break;
         case HTIMEH:
-            cpu->htimer &= (unsigned short)(data << 8);
+            cpu->htimer &= (unsigned short)data << 8;
             break;
         case VTIMEL:
-            cpu->vtimer &= (unsigned short)data;
+            cpu->vtimer &= data;
             break;
         case VTIMEH:
-            cpu->vtimer &= (unsigned short)(data << 8);
+            cpu->vtimer &= (unsigned short)data << 8;
             break;
     }
+
+    bus_increment_wmadd(&cpu->address);
 }
 
 unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode)
