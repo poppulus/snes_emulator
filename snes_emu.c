@@ -1,5 +1,73 @@
 #include "snes_emu.h"
 
+unsigned char dma_mem_read(BUS *bus, unsigned int addr)
+{
+    unsigned char data = 0;
+
+    switch (addr)
+    {
+        default: break;
+        
+    }
+
+    return data;
+}
+
+unsigned char ppu_mem_read(BUS *bus, unsigned int addr)
+{
+    unsigned char data = 0;
+
+    switch (addr)
+    {
+        default: break;
+        case 0x2134:
+            break;
+        case 0x2135:
+            break;
+        case 0x2136:
+            break;
+        case 0x2137:
+            break;
+        case OAMDATAREAD:
+            break;
+        case VMDATALREAD:
+            break;
+        case VMDATAHREAD:
+            break;
+    }
+
+    return data;
+}
+
+void ppu_mem_write(BUS *bus, unsigned int addr, unsigned char data)
+{
+    switch (addr)
+    {
+        default: break;
+        case INIDISP:
+            break;
+        case OBJSEL:
+            break;
+        case OAMADDL:
+            bus->ppu.oamadd.lo = data;
+            break;
+        case OAMADDH:
+            bus->ppu.oamadd.hi = data & 1;
+            break;
+        case OAMDATA:
+
+            break;
+        case 0x2116:
+            break;
+        case 0x2117:
+            break;
+        case 0x2118:
+            break;
+        case 0x2119:
+            break;
+    }
+}
+
 void bus_addr_set(WMADD *addr, unsigned int data)
 {
     addr->hi = (unsigned char)(data >> 16);
@@ -56,6 +124,9 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
 
     switch (pos)
     {
+        case PPU_START ... PPU_END:
+            data = ppu_mem_read(&cpu->bus, pos);
+            break;
         case APUIO0:
             break;
         case APUIO1:
@@ -115,6 +186,114 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
         case JOY4H:
             data = bus_joypad_read(&cpu->bus.joypad[3], 1);
             break;
+        case 0x420B:
+        case 0x420C:
+        case 0x4300:
+        case 0x4310:
+        case 0x4320:
+        case 0x4330:
+        case 0x4340:
+        case 0x4350:
+        case 0x4360:
+        case 0x4370:
+        case 0x4301:
+        case 0x4311:
+        case 0x4321:
+        case 0x4331:
+        case 0x4341:
+        case 0x4351:
+        case 0x4361:
+        case 0x4371:
+        case 0x4302:
+        case 0x4312:
+        case 0x4322:
+        case 0x4332:
+        case 0x4342:
+        case 0x4352:
+        case 0x4362:
+        case 0x4372:
+        case 0x4303:
+        case 0x4313:
+        case 0x4323:
+        case 0x4333:
+        case 0x4343:
+        case 0x4353:
+        case 0x4363:
+        case 0x4373:
+        case 0x4304:
+        case 0x4314:
+        case 0x4324:
+        case 0x4334:
+        case 0x4344:
+        case 0x4354:
+        case 0x4364:
+        case 0x4374:
+        case 0x4305:
+        case 0x4315:
+        case 0x4325:
+        case 0x4335:
+        case 0x4345:
+        case 0x4355:
+        case 0x4365:
+        case 0x4375:
+        case 0x4306:
+        case 0x4316:
+        case 0x4326:
+        case 0x4336:
+        case 0x4346:
+        case 0x4356:
+        case 0x4366:
+        case 0x4376:
+        case 0x4307:
+        case 0x4317:
+        case 0x4327:
+        case 0x4337:
+        case 0x4347:
+        case 0x4357:
+        case 0x4367:
+        case 0x4377:
+        case 0x4308:
+        case 0x4318:
+        case 0x4328:
+        case 0x4338:
+        case 0x4348:
+        case 0x4358:
+        case 0x4368:
+        case 0x4378:
+        case 0x4309:
+        case 0x4319:
+        case 0x4329:
+        case 0x4339:
+        case 0x4349:
+        case 0x4359:
+        case 0x4369:
+        case 0x4379:
+        case 0x430A:
+        case 0x431A:
+        case 0x432A:
+        case 0x433A:
+        case 0x434A:
+        case 0x435A:
+        case 0x436A:
+        case 0x437A:
+        case 0x430B:
+        case 0x431B:
+        case 0x432B:
+        case 0x433B:
+        case 0x434B:
+        case 0x435B:
+        case 0x436B:
+        case 0x437B:
+        case 0x430F:
+        case 0x431F:
+        case 0x432F:
+        case 0x433F:
+        case 0x434F:
+        case 0x435F:
+        case 0x436F:
+        case 0x437F:
+            data = dma_mem_read(&cpu->bus, pos);
+            break;
     }
 
     return data;
@@ -124,6 +303,9 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
 {
     switch (pos)
     {
+        case PPU_START ... PPU_END:
+            ppu_mem_write(&cpu->bus, pos, data);
+            break;
         case APUIO0:
             break;
         case APUIO1:

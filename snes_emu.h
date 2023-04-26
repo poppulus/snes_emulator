@@ -1,5 +1,19 @@
 #define WRAM_SIZE   0x01FFFF
 
+#define PPU_START   0x2100
+#define PPU_END     0x213F
+
+#define INIDISP     0x2100
+#define OBJSEL      0x2101
+#define OAMADDL     0x2102
+#define OAMADDH     0x2103
+#define OAMDATA     0x2104
+
+#define OAMDATAREAD 0x2138
+
+#define VMDATALREAD 0x2139
+#define VMDATAHREAD 0x213A
+
 #define APUIO0      0x2140
 #define APUIO1      0x2141
 #define APUIO2      0x2142
@@ -123,7 +137,19 @@ typedef struct
 
 typedef struct
 {
+    unsigned char hi, lo;
+} OAMADD;
+
+typedef struct
+{
+    unsigned char oam[544];
+    OAMADD oamadd;
+} PPU;
+
+typedef struct
+{
     JOYPAD joypad[4];
+    PPU ppu;
 } BUS;
 
 typedef struct 
@@ -146,8 +172,10 @@ typedef struct
     BUS bus;
 } CPU;
 
-extern unsigned int bus_addr_get(WMADD);
+extern unsigned char ppu_mem_read(BUS*, unsigned int addr);
+
 extern void bus_addr_set(WMADD*, unsigned int data);
+extern unsigned int bus_addr_get(WMADD);
 extern void bus_increment_wmadd(WMADD*);
 
 extern unsigned char bus_joypad_read(JOYPAD*, unsigned char hi);
