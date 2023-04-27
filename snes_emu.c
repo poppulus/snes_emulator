@@ -7,7 +7,214 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
     switch (addr)
     {
         default: break;
-        
+        case 0x4300:
+            break;
+        case 0x4310:
+            break;
+        case 0x4320:
+            break;
+        case 0x4330:
+            break;
+        case 0x4340:
+            break;
+        case 0x4350:
+            break;
+        case 0x4360:
+            break;
+        case 0x4370:
+            break;
+        case 0x4301:
+            break;
+        case 0x4311:
+            break;
+        case 0x4321:
+            break;
+        case 0x4331:
+            break;
+        case 0x4341:
+            break;
+        case 0x4351:
+            break;
+        case 0x4361:
+            break;
+        case 0x4371:
+            break;
+        case 0x4302:
+            break;
+        case 0x4312:
+            break;
+        case 0x4322:
+            break;
+        case 0x4332:
+            break;
+        case 0x4342:
+            break;
+        case 0x4352:
+            break;
+        case 0x4362:
+            break;
+        case 0x4372:
+            break;
+        case 0x4303:
+            break;
+        case 0x4313:
+            break;
+        case 0x4323:
+            break;
+        case 0x4333:
+            break;
+        case 0x4343:
+            break;
+        case 0x4353:
+            break;
+        case 0x4363:
+            break;
+        case 0x4373:
+            break;
+        case 0x4304:
+            break;
+        case 0x4314:
+            break;
+        case 0x4324:
+            break;
+        case 0x4334:
+            break;
+        case 0x4344:
+            break;
+        case 0x4354:
+            break;
+        case 0x4364:
+            break;
+        case 0x4374:
+            break;
+        case 0x4305:
+            break;
+        case 0x4315:
+            break;
+        case 0x4325:
+            break;
+        case 0x4335:
+            break;
+        case 0x4345:
+            break;
+        case 0x4355:
+            break;
+        case 0x4365:
+            break;
+        case 0x4375:
+            break;
+        case 0x4306:
+            break;
+        case 0x4316:
+            break;
+        case 0x4326:
+            break;
+        case 0x4336:
+            break;
+        case 0x4346:
+            break;
+        case 0x4356:
+            break;
+        case 0x4366:
+            break;
+        case 0x4376:
+            break;
+        case 0x4307:
+            break;
+        case 0x4317:
+            break;
+        case 0x4327:
+            break;
+        case 0x4337:
+            break;
+        case 0x4347:
+            break;
+        case 0x4357:
+            break;
+        case 0x4367:
+            break;
+        case 0x4377:
+            break;
+        case 0x4308:
+            break;
+        case 0x4318:
+            break;
+        case 0x4328:
+            break;
+        case 0x4338:
+            break;
+        case 0x4348:
+            break;
+        case 0x4358:
+            break;
+        case 0x4368:
+            break;
+        case 0x4378:
+            break;
+        case 0x4309:
+            break;
+        case 0x4319:
+            break;
+        case 0x4329:
+            break;
+        case 0x4339:
+            break;
+        case 0x4349:
+            break;
+        case 0x4359:
+            break;
+        case 0x4369:
+            break;
+        case 0x4379:
+            break;
+        case 0x430A:
+            break;
+        case 0x431A:
+            break;
+        case 0x432A:
+            break;
+        case 0x433A:
+            break;
+        case 0x434A:
+            break;
+        case 0x435A:
+            break;
+        case 0x436A:
+            break;
+        case 0x437A:
+            break;
+        case 0x430B:
+            break;
+        case 0x431B:
+            break;
+        case 0x432B:
+            break;
+        case 0x433B:
+            break;
+        case 0x434B:
+            break;
+        case 0x435B:
+            break;
+        case 0x436B:
+            break;
+        case 0x437B:
+            break;
+        case 0x430F:
+            break;
+        case 0x431F:
+            break;
+        case 0x432F:
+            break;
+        case 0x433F:
+            break;
+        case 0x434F:
+            break;
+        case 0x435F:
+            break;
+        case 0x436F:
+            break;
+        case 0x437F:
+            break;
     }
 
     return data;
@@ -34,6 +241,16 @@ unsigned char ppu_mem_read(BUS *bus, unsigned int addr)
             break;
         case VMDATAHREAD:
             break;
+        case 0x213B:
+            break;
+        case 0x213C:
+            break;
+        case 0x213D:
+            break;
+        case 0x213E:
+            break;
+        case 0x213F:
+            break;
     }
 
     return data;
@@ -57,6 +274,40 @@ void ppu_mem_write(BUS *bus, unsigned int addr, unsigned char data)
         case OAMDATA:
 
             break;
+        case 0x2105:
+            break;
+        case 0x2106:
+            break;
+        case 0x2107:
+            break;
+        case 0x2108:
+            break;
+        case 0x2109:
+            break;
+        case 0x210A:
+            break;
+        case 0x210B:
+            break;
+        case 0x210C:
+            break;
+        case 0x210D:
+            break;
+        case 0x210E:
+            break;
+        case 0x210F:
+            break;
+        case 0x2110:
+            break;
+        case 0x2111:
+            break;
+        case 0x2112:
+            break;
+        case 0x2113:
+            break;
+        case 0x2114:
+            break;
+        case 0x2115:
+            break;
         case 0x2116:
             break;
         case 0x2117:
@@ -64,6 +315,82 @@ void ppu_mem_write(BUS *bus, unsigned int addr, unsigned char data)
         case 0x2118:
             break;
         case 0x2119:
+            break;
+        case 0x211A:
+            break;
+        case 0x211B:
+            break;
+        case 0x211C:
+            break;
+        case 0x211D:
+            break;
+        case 0x211E:
+            break;
+        case 0x211F:
+            break;
+        case 0x2120:
+            break;
+        case 0x2121:
+            break;
+        case 0x2122:
+            break;
+        case 0x2123:
+            break;
+        case 0x2124:
+            break;
+        case 0x2125:
+            break;
+        case 0x2126:
+            break;
+        case 0x2127:
+            break;
+        case 0x2128:
+            break;
+        case 0x2129:
+            break;
+        case 0x212A:
+            break;
+        case 0x212B:
+            break;
+        case 0x212C:
+            break;
+        case 0x212D:
+            break;
+        case 0x212E:
+            break;
+        case 0x212F:
+            break;
+        case 0x2130:
+            break;
+        case 0x2131:
+            break;
+        case 0x2132:
+            break;
+        case 0x2133:
+            break;
+        case 0x2134:
+            break;
+        case 0x2135:
+            break;
+        case 0x2136:
+            break;
+        case 0x2137:
+            break;
+        case 0x2138:
+            break;
+        case 0x2139:
+            break;
+        case 0x213A:
+            break;
+        case 0x213B:
+            break;
+        case 0x213C:
+            break;
+        case 0x213D:
+            break;
+        case 0x213E:
+            break;
+        case 0x213F:
             break;
     }
 }
@@ -186,8 +513,6 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
         case JOY4H:
             data = bus_joypad_read(&cpu->bus.joypad[3], 1);
             break;
-        case 0x420B:
-        case 0x420C:
         case 0x4300:
         case 0x4310:
         case 0x4320:
@@ -292,6 +617,7 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
         case 0x435F:
         case 0x436F:
         case 0x437F:
+            // read and write
             data = dma_mem_read(&cpu->bus, pos);
             break;
     }
