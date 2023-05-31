@@ -1,5 +1,112 @@
 #include "snes_emu.h"
 
+int rom_validate(unsigned char buf[])
+{
+    unsigned short checksum, compliment;
+
+    // look for LoROM header
+
+    checksum = (unsigned short)buf[ROM_LO_CHECKSUM] << 8 | buf[ROM_LO_CHECKSUM + 1];
+    compliment = (unsigned short)buf[ROM_LO_COMPLIMENT] << 8 | buf[ROM_LO_COMPLIMENT + 1];
+
+    if (checksum + compliment == 0xFFFF)
+    {
+        return 1;
+    }
+
+    // look for HiROM header
+
+    checksum = (unsigned short)buf[ROM_HI_CHECKSUM] << 8 | buf[ROM_HI_CHECKSUM + 1];
+    compliment = (unsigned short)buf[ROM_HI_COMPLIMENT] << 8 | buf[ROM_HI_COMPLIMENT + 1];
+
+    if (checksum + compliment == 0xFFFF)
+    {
+        return 2;
+    }
+
+    checksum = (unsigned short)buf[ROM_EX_CHECKSUM] << 8 | buf[ROM_EX_CHECKSUM + 1];
+    compliment = (unsigned short)buf[ROM_EX_COMPLIMENT] << 8 | buf[ROM_EX_COMPLIMENT + 1];
+
+    if (checksum + compliment == 0xFFFF)
+    {
+        return 3;
+    }
+
+    return 0;
+}
+
+void rom_load(BUS *bus)
+{
+    unsigned char buf[0x40FFFF];
+    FILE *f;
+
+    if (!(f = fopen("mario.sfc", "r"))) 
+    {
+        printf("error opening ROM file ...\n");
+        return;
+    }
+
+    int i = 0;
+    char c;
+
+    while(1)
+    {
+        c = fgetc(f);
+        if (feof(f)) break;
+        buf[i++] = c;
+        if (i >= 0x40FFFF) break;
+    }
+
+    fclose(f);
+
+    if ((i % 1024) == 512)
+    {
+        printf("probably a headered ROM with an extra 512 bytes of padding\n");
+    }
+
+    int rom_type = rom_validate(buf);
+
+    // make sure ROM is of the right type
+
+    switch (rom_type)
+    {
+        default: break;
+        case 0:
+            printf("error validating ROM file!\n");
+            break;
+        case 1:
+            if (buf[0x7FD5] == 0x20)
+            {
+                int rom_size = ((1 << buf[0x7FD7]) * 1024) - 1;
+                bus->rom_buffer = malloc(rom_size); 
+                
+                for (i = 0; i < rom_size; i++)
+                    bus->rom_buffer[i] = buf[i];
+            }
+            break;
+        case 2:
+            if (buf[0xFFD5] == 0x21)
+            {
+                int rom_size = ((1 << buf[0xFFD7]) * 1024) - 1;
+                bus->rom_buffer = malloc(rom_size); 
+                
+                for (i = 0; i < rom_size; i++)
+                    bus->rom_buffer[i] = buf[i];
+            }
+            break;
+        case 3:
+            if (buf[0x40FFD5] == 0x25)
+            {
+                int rom_size = ((1 << buf[0x40FFD7]) * 1024) - 1;
+                bus->rom_buffer = malloc(rom_size); 
+
+                for (i = 0; i < rom_size; i++)
+                    bus->rom_buffer[i] = buf[i];
+            }
+            break;
+    }
+}
+
 unsigned char dma_mem_read(BUS *bus, unsigned int addr)
 {
     unsigned char data = 0;
@@ -7,39 +114,55 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
     switch (addr)
     {
         default: break;
-        case 0x4300:
+        case DMAP0:
+            data = bus->ppu.dmapn[0];
             break;
         case 0x4310:
+            data = bus->ppu.dmapn[1];
             break;
         case 0x4320:
+            data = bus->ppu.dmapn[2];
             break;
         case 0x4330:
+            data = bus->ppu.dmapn[3];
             break;
         case 0x4340:
+            data = bus->ppu.dmapn[4];
             break;
         case 0x4350:
+            data = bus->ppu.dmapn[5];
             break;
         case 0x4360:
+            data = bus->ppu.dmapn[6];
             break;
         case 0x4370:
+            data = bus->ppu.dmapn[7];
             break;
-        case 0x4301:
+        case BBAD0:
+            data = bus->ppu.bbadn[0];
             break;
         case 0x4311:
+            data = bus->ppu.bbadn[1];
             break;
         case 0x4321:
+            data = bus->ppu.bbadn[2];
             break;
         case 0x4331:
+            data = bus->ppu.bbadn[3];
             break;
         case 0x4341:
+            data = bus->ppu.bbadn[4];
             break;
         case 0x4351:
+            data = bus->ppu.bbadn[5];
             break;
         case 0x4361:
+            data = bus->ppu.bbadn[6];
             break;
         case 0x4371:
+            data = bus->ppu.bbadn[7];
             break;
-        case 0x4302:
+        case A1T0L:
             break;
         case 0x4312:
             break;
@@ -55,7 +178,7 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             break;
         case 0x4372:
             break;
-        case 0x4303:
+        case A1T0H:
             break;
         case 0x4313:
             break;
@@ -71,7 +194,7 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             break;
         case 0x4373:
             break;
-        case 0x4304:
+        case A1B0:
             break;
         case 0x4314:
             break;
@@ -87,7 +210,7 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             break;
         case 0x4374:
             break;
-        case 0x4305:
+        case DAS0L:
             break;
         case 0x4315:
             break;
@@ -103,7 +226,7 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             break;
         case 0x4375:
             break;
-        case 0x4306:
+        case DAS0H:
             break;
         case 0x4316:
             break;
@@ -119,7 +242,7 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             break;
         case 0x4376:
             break;
-        case 0x4307:
+        case DASB0:
             break;
         case 0x4317:
             break;
@@ -135,7 +258,7 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             break;
         case 0x4377:
             break;
-        case 0x4308:
+        case A2A0L:
             break;
         case 0x4318:
             break;
@@ -151,7 +274,7 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             break;
         case 0x4378:
             break;
-        case 0x4309:
+        case A2A0H:
             break;
         case 0x4319:
             break;
@@ -167,7 +290,7 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             break;
         case 0x4379:
             break;
-        case 0x430A:
+        case NLTR0:
             break;
         case 0x431A:
             break;
@@ -183,7 +306,7 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             break;
         case 0x437A:
             break;
-        case 0x430B:
+        case UNUSEDn1:
             break;
         case 0x431B:
             break;
@@ -199,7 +322,7 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             break;
         case 0x437B:
             break;
-        case 0x430F:
+        case UNUSEDn2:
             break;
         case 0x431F:
             break;
@@ -220,6 +343,49 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
     return data;
 }
 
+void ppu_increment_vmadd(VMADD *addr, unsigned char inc)
+{
+    unsigned char lo = addr->lo;
+
+    switch (inc)
+    {
+        case 0:
+            addr->lo += 1;
+            break;
+        case 1:
+            addr->lo += 32;
+            break;
+        case 2:
+        case 3:
+            addr->lo += 128;
+            break;
+    }
+
+    if (addr->lo < lo)
+    {
+        switch (inc)
+        {
+            case 0:
+                addr->hi += 1;
+                break;
+            case 1:
+                addr->hi += 32;
+                break;
+            case 2:
+            case 3:
+                addr->hi += 128;
+                break;
+        }
+        
+        // need more?
+    }
+}
+
+unsigned short ppu_get_vmadd(VMADD addr)
+{
+    return (unsigned short)addr.hi | (unsigned short)addr.lo;
+}
+
 unsigned char ppu_mem_read(BUS *bus, unsigned int addr)
 {
     unsigned char data = 0;
@@ -227,29 +393,72 @@ unsigned char ppu_mem_read(BUS *bus, unsigned int addr)
     switch (addr)
     {
         default: break;
-        case 0x2134:
+        case MPYL:
+            data = bus->ppu.m7_multi_result & 0xFF;
             break;
-        case 0x2135:
+        case MPYM:
+            data = (bus->ppu.m7_multi_result & 0xFF00) >> 8;
             break;
-        case 0x2136:
+        case MPYH:
+            data = (bus->ppu.m7_multi_result & 0xFF0000) >> 16;
             break;
-        case 0x2137:
+        case SLHV:
+            bus->ppu.counter_latch = 1;
             break;
         case OAMDATAREAD:
+            data = bus->ppu.oam[bus->ppu.oamaddr];
+            bus->ppu.oamaddr += 1;
             break;
         case VMDATALREAD:
+            data = bus->ppu.vmadd_latch & 0xFF;
+            
+            if (!(bus->ppu.vmain & 0b10000000))
+            {
+                bus->ppu.vmadd_latch = ppu_get_vmadd(bus->ppu.vmadd);
+                ppu_increment_vmadd(&bus->ppu.vmadd, bus->ppu.vmain);
+            }
             break;
         case VMDATAHREAD:
+            data = (bus->ppu.vmadd_latch & 0xFF00) >> 8;
+
+            if (bus->ppu.vmain & 0b10000000)
+            {
+                bus->ppu.vmadd_latch = ppu_get_vmadd(bus->ppu.vmadd);
+                ppu_increment_vmadd(&bus->ppu.vmadd, bus->ppu.vmain);
+            }
             break;
-        case 0x213B:
+        case CGDATAREAD:
+            if (bus->ppu.cgram_byte == 0)
+                data = bus->ppu.cgdata & 0xFF;
+            else if (bus->ppu.cgram_byte == 1)
+                data = (bus->ppu.cgdata & 0xFF00) >> 8;
+
+            bus->ppu.cgram_byte = ~bus->ppu.cgram_byte;
             break;
-        case 0x213C:
+        case OPHCT:
+            if (bus->ppu.ophct_byte == 0) 
+                data = bus->ppu.ophct & 0xFF;
+            else if (bus->ppu.ophct_byte == 1)
+                data = (bus->ppu.ophct & 0xFF00) >> 8;
+            
+            bus->ppu.ophct_byte = ~bus->ppu.ophct_byte;
             break;
-        case 0x213D:
+        case OPVCT:
+            if (bus->ppu.opvct_byte == 0)
+                data = bus->ppu.opvct & 0xFF;
+            else if (bus->ppu.opvct_byte == 1)
+                data = (bus->ppu.opvct & 0xFF00) >> 8;
+            
+            bus->ppu.opvct_byte = ~bus->ppu.opvct_byte;
             break;
-        case 0x213E:
+        case STAT77:
+            data = bus->ppu.stat77;
             break;
-        case 0x213F:
+        case STAT78:
+            data = bus->ppu.stat78;
+            bus->ppu.ophct_byte = 0;
+            bus->ppu.opvct_byte = 0;
+            bus->ppu.counter_latch = 0;
             break;
     }
 
@@ -262,135 +471,216 @@ void ppu_mem_write(BUS *bus, unsigned int addr, unsigned char data)
     {
         default: break;
         case INIDISP:
+            bus->ppu.inidisp = data;
             break;
         case OBJSEL:
+            bus->ppu.objsel = data;
             break;
         case OAMADDL:
             bus->ppu.oamadd.lo = data;
+            bus->ppu.oamaddr |= bus->ppu.oamadd.lo;
+            bus->ppu.oamaddr = (bus->ppu.oamaddr & 0x1FF) << 1;
             break;
         case OAMADDH:
-            bus->ppu.oamadd.hi = data & 1;
+            bus->ppu.oamadd.hi = data & 0b10000001;
+            bus->ppu.oamaddr |= (unsigned short)(bus->ppu.oamadd.hi << 7);
+            bus->ppu.oamaddr = (bus->ppu.oamaddr & 0x1FF) << 1;
             break;
         case OAMDATA:
+            if ((bus->ppu.oamaddr & 1) == 0)
+                bus->ppu.oamadd.latch = data;
 
+            if (bus->ppu.oamaddr < 0x200 && bus->ppu.oamaddr & 0b1)
+            {
+                bus->ppu.oam[bus->ppu.oamaddr - 1] = bus->ppu.oamadd.latch;
+                bus->ppu.oam[bus->ppu.oamaddr] = data;
+            }
+
+            if (bus->ppu.oamaddr >= 0x200)
+                bus->ppu.oam[bus->ppu.oamaddr] = data;
+
+            bus->ppu.oamaddr += 1;
             break;
-        case 0x2105:
+        case BGMODE:
+            bus->ppu.bgmode = data;
             break;
-        case 0x2106:
+        case MOSAIC:
+            bus->ppu.mosaic = data;
             break;
-        case 0x2107:
+        case BG1SC:
+            bus->ppu.bg1sc = data;
             break;
-        case 0x2108:
+        case BG2SC:
+            bus->ppu.bg2sc = data;
             break;
-        case 0x2109:
+        case BG3SC:
+            bus->ppu.bg3sc = data;
             break;
-        case 0x210A:
+        case BG4SC:
+            bus->ppu.bg4sc = data;
             break;
-        case 0x210B:
+        case BG12NBA:
+            bus->ppu.bg12nba = data;
             break;
-        case 0x210C:
+        case BG34NBA:
+            bus->ppu.bg34nba = data;
             break;
-        case 0x210D:
+        case BG1HOFS: // M7HOFS
+            bus->ppu.m7hofs = (data << 8) | bus->ppu.mode7_latch;
+            bus->ppu.mode7_latch = data;
+
+            bus->ppu.bg1hofs = (unsigned short)(data << 8) | (bus->ppu.bgofs_latch & ~7) | (bus->ppu.bgofs_latch & 7);
+            bus->ppu.bgofs_latch = data;
+            bus->ppu.bghofs_latch = data;
             break;
-        case 0x210E:
+        case BG1VOFS: // M7VOFS
+            bus->ppu.m7vofs = (data << 8) | bus->ppu.mode7_latch;
+            bus->ppu.mode7_latch = data;
+
+            bus->ppu.bg1vofs = (unsigned short)(data << 8) | bus->ppu.bgofs_latch;
+            bus->ppu.bgofs_latch = data;
             break;
-        case 0x210F:
+        case BG2HOFS:
+            bus->ppu.bg2hofs = (unsigned short)(data << 8) | (bus->ppu.bgofs_latch & ~7) | (bus->ppu.bgofs_latch & 7);
+            bus->ppu.bgofs_latch = data;
+            bus->ppu.bghofs_latch = data;
             break;
-        case 0x2110:
+        case BG2VOFS:
+            bus->ppu.bg2vofs = (unsigned short)(data << 8) | bus->ppu.bgofs_latch;
+            bus->ppu.bgofs_latch = data;
             break;
-        case 0x2111:
+        case BG3HOFS:
+            bus->ppu.bg3hofs = (unsigned short)(data << 8) | (bus->ppu.bgofs_latch & ~7) | (bus->ppu.bgofs_latch & 7);
+            bus->ppu.bgofs_latch = data;
+            bus->ppu.bghofs_latch = data;
             break;
-        case 0x2112:
+        case BG3VOFS:
+            bus->ppu.bg3vofs = (unsigned short)(data << 8) | bus->ppu.bgofs_latch;
+            bus->ppu.bgofs_latch = data;
             break;
-        case 0x2113:
+        case BG4HOFS:
+            bus->ppu.bg4hofs = (unsigned short)(data << 8) | (bus->ppu.bgofs_latch & ~7) | (bus->ppu.bgofs_latch & 7);
+            bus->ppu.bgofs_latch = data;
+            bus->ppu.bghofs_latch = data;
             break;
-        case 0x2114:
+        case BG4VOFS:
+            bus->ppu.bg4vofs = (unsigned short)(data << 8) | bus->ppu.bgofs_latch;
+            bus->ppu.bgofs_latch = data;
             break;
-        case 0x2115:
+        case VMAIN:
+            bus->ppu.vmain = data;
             break;
-        case 0x2116:
+        case VMADDL:
+            bus->ppu.vmadd.lo = data;
+            bus->ppu.vmadd_latch = ppu_get_vmadd(bus->ppu.vmadd);
             break;
-        case 0x2117:
+        case VMADDH:
+            bus->ppu.vmadd.hi = data;
+            bus->ppu.vmadd_latch = ppu_get_vmadd(bus->ppu.vmadd);
             break;
-        case 0x2118:
+        case VMDATAL:
+            bus->ppu.vmdata.lo = data;
+            if (!(bus->ppu.vmain & 0b10000000))
+                ppu_increment_vmadd(&bus->ppu.vmadd, bus->ppu.vmain);
             break;
-        case 0x2119:
+        case VMDATAH:
+            bus->ppu.vmdata.hi = data;
+            if (bus->ppu.vmain & 0b10000000)
+                ppu_increment_vmadd(&bus->ppu.vmadd, bus->ppu.vmain);
             break;
-        case 0x211A:
+        case M7SEL:
+            bus->ppu.m7sel = data;
             break;
-        case 0x211B:
+        case M7A:
+            bus->ppu.m7a = (data << 8) | bus->ppu.mode7_latch;
+            bus->ppu.mode7_latch = data;
+
+            bus->ppu.m7_multi_result = bus->ppu.m7a * (bus->ppu.m7b & 0xFF);
             break;
-        case 0x211C:
+        case M7B:
+            bus->ppu.m7b = (data << 8) | bus->ppu.mode7_latch;
+            bus->ppu.mode7_latch = data;
+
+            bus->ppu.m7_multi_result = bus->ppu.m7a * (bus->ppu.m7b & 0xFF);
             break;
-        case 0x211D:
+        case M7C:
+            bus->ppu.m7c = (data << 8) | bus->ppu.mode7_latch;
+            bus->ppu.mode7_latch = data;
             break;
-        case 0x211E:
+        case M7D:
+            bus->ppu.m7d = (data << 8) | bus->ppu.mode7_latch;
+            bus->ppu.mode7_latch = data;
             break;
-        case 0x211F:
+        case M7X:
+            bus->ppu.m7x = (data << 8) | bus->ppu.mode7_latch;
+            bus->ppu.mode7_latch = data;
             break;
-        case 0x2120:
+        case M7Y:
+            bus->ppu.m7y = (data << 8) | bus->ppu.mode7_latch;
+            bus->ppu.mode7_latch = data;
             break;
-        case 0x2121:
+        case CGADD:
+            bus->ppu.cgadd = data;
+            bus->ppu.cgram_byte = 0;
             break;
-        case 0x2122:
+        case CGDATA:
+            if (bus->ppu.cgram_byte == 0)
+                bus->ppu.cgram_latch = data;
+            else if (bus->ppu.cgram_byte == 1)
+                bus->ppu.cgdata = (unsigned short)(data << 8) | bus->ppu.cgram_latch;
+
+            bus->ppu.cgram_byte = ~bus->ppu.cgram_byte;
             break;
-        case 0x2123:
+        case W12SEL:
+            bus->ppu.w12sel = data;
             break;
-        case 0x2124:
+        case W34SEL:
+            bus->ppu.w34sel = data;
             break;
-        case 0x2125:
+        case WOBJSEL:
+            bus->ppu.wobjsel = data;
             break;
-        case 0x2126:
+        case WH0:
+            bus->ppu.wh0 = data;
             break;
-        case 0x2127:
+        case WH1:
+            bus->ppu.wh1 = data;
             break;
-        case 0x2128:
+        case WH2:
+            bus->ppu.wh2 = data;
             break;
-        case 0x2129:
+        case WH3:
+            bus->ppu.wh3 = data;
             break;
-        case 0x212A:
+        case WBGLOG:
+            bus->ppu.wbglog  = data;
             break;
-        case 0x212B:
+        case WOBJGLOG:
+            bus->ppu.wobjlog  = data;
             break;
-        case 0x212C:
+        case TM:
+            bus->ppu.tm = data;
             break;
-        case 0x212D:
+        case TS:
+            bus->ppu.ts = data;
             break;
-        case 0x212E:
+        case TMW:
+            bus->ppu.tmw  = data;
             break;
-        case 0x212F:
+        case TSW:
+            bus->ppu.tsw  = data;
             break;
-        case 0x2130:
+        case CGWSEL:
+            bus->ppu.cgwsel  = data;
             break;
-        case 0x2131:
+        case CGADSUB:
+            bus->ppu.cgadsub = data;
             break;
-        case 0x2132:
+        case COLDATA:
+            bus->ppu.coldata = data;
             break;
-        case 0x2133:
-            break;
-        case 0x2134:
-            break;
-        case 0x2135:
-            break;
-        case 0x2136:
-            break;
-        case 0x2137:
-            break;
-        case 0x2138:
-            break;
-        case 0x2139:
-            break;
-        case 0x213A:
-            break;
-        case 0x213B:
-            break;
-        case 0x213C:
-            break;
-        case 0x213D:
-            break;
-        case 0x213E:
-            break;
-        case 0x213F:
+        case SETINI:
+            bus->ppu.setini = data;
             break;
     }
 }
@@ -466,8 +756,12 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
             data = cpu->wram[bus_addr_get(cpu->address)];
             break;
         case RDNMI:
+            data = cpu->rdnmi;
+            cpu->rdnmi &= 0x7F;
             break;
         case TIMEUP:
+            data = cpu->timeup;
+            cpu->timeup &= 0x7F;
             break;
         case HVBJOY:
             break;
@@ -656,10 +950,13 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
             cpu->nmitimen = data;
             break;
         case MDMAEN:
+            cpu->mdmaen = data;
             break;
         case HDMAEN:
+            cpu->hdmaen = data;
             break;
         case MEMSEL:
+            cpu->memsel = data;
             break;
         case JOYOUT:
             bus_joypad_write(cpu->bus.joypad, data);
@@ -698,6 +995,26 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
     }
 
     bus_increment_wmadd(&cpu->address);
+}
+
+void bus_init(BUS *bus)
+{
+    int i = 0;
+    
+    for (; i < 8; i++)
+    {
+        bus->ppu.dmapn[i] = 0xFF;
+        bus->ppu.bbadn[i] = 0xFF;
+        bus->ppu.dasbn[i] = 0xFF;
+        bus->ppu.dasnh[i] = 0xFF;
+        bus->ppu.dasnl[i] = 0xFF;
+        bus->ppu.nltrn[i] = 0xFF;
+        bus->ppu.a2anh[i] = 0xFF;
+        bus->ppu.a2anl[i] = 0xFF;
+        bus->ppu.a1tnb[i] = 0xFF;
+        bus->ppu.a1tnh[i] = 0xFF;
+        bus->ppu.a1tnl[i] = 0xFF;
+    }
 }
 
 unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode)
@@ -4333,4 +4650,24 @@ void cpu_interpret(CPU *cpu)
 
     // check for interrupts
 
+}
+
+void cpu_init(CPU *cpu)
+{
+    
+    cpu->htimer = 0x1FF;
+    cpu->vtimer = 0x1FF;
+
+    cpu->rdnmi &= 0x7F;
+    cpu->timeup &= 0x7F;
+
+    cpu->dividend.hi = 0xFF;
+    cpu->dividend.lo = 0xFF;
+
+    cpu->multiply._a = 0xFF;
+
+    cpu->mdmaen = 0;
+    cpu->hdmaen = 0;
+    cpu->nmitimen = 0;
+    cpu->program_counter = 0;   
 }

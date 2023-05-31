@@ -2,10 +2,16 @@
 //#include <GL/glut.h>
 #include "snes_emu.h"
 
-#include <stdio.h>
-
 int main(int argc, char *argv[])
 {
-    printf("program ran with NO ERRORS!\n");
+    CPU snes_cpu;
+
+    rom_load(&snes_cpu.bus);
+
+    if (snes_cpu.bus.rom_buffer != NULL)
+    {
+        free(snes_cpu.bus.rom_buffer);
+    }
+
     return 0;
 }

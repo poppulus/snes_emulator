@@ -1,8 +1,19 @@
 /*
-
     defines for all the SNES memory registers
 
 */
+
+#define ROM_LO_MEM_MODE     0x7FD5
+#define ROM_LO_CHECKSUM     0x7FDC
+#define ROM_LO_COMPLIMENT   0x7FDE
+
+#define ROM_HI_MEM_MODE     0xFFD5
+#define ROM_HI_CHECKSUM     0xFFDC
+#define ROM_HI_COMPLIMENT   0xFFDE
+
+#define ROM_EX_MEM_MODE     0x40FFD5
+#define ROM_EX_CHECKSUM     0x40FFDC
+#define ROM_EX_COMPLIMENT   0x40FFDE
 
 #define PPU_START   0x2100
 #define PPU_END     0x213F
@@ -11,12 +22,15 @@
 #define DMA_END     0x437F
 
 #define INIDISP     0x2100
+
 #define OBJSEL      0x2101
+
 #define OAMADDL     0x2102
 #define OAMADDH     0x2103
 #define OAMDATA     0x2104
 
 #define BGMODE      0x2105
+
 #define MOSAIC      0x2106
 
 #define BG1SC       0x2107
@@ -156,17 +170,17 @@
 #define JOY4L       0x421E
 #define JOY4H       0x421F
 
-#define DMAPn       0x4300
-#define BBADn       0x4301
-#define A1TnL       0x4302
-#define A1TnH       0x4303
-#define A1Bn        0x4304
-#define DASnL       0x4305
-#define DASnH       0x4306
-#define DASBn       0x4307
-#define A2AnL       0x4308
-#define A2AnH       0x4309
-#define NLTRn       0x430A
+#define DMAP0       0x4300
+#define BBAD0       0x4301
+#define A1T0L       0x4302
+#define A1T0H       0x4303
+#define A1B0        0x4304
+#define DAS0L       0x4305
+#define DAS0H       0x4306
+#define DASB0       0x4307
+#define A2A0L       0x4308
+#define A2A0H       0x4309
+#define NLTR0       0x430A
 
-#define UNUSEDn     0x430B
-#define UNUSEDn     0x430F
+#define UNUSEDn1    0x430B
+#define UNUSEDn2    0x430F
