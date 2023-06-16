@@ -4,6 +4,33 @@
 
 #define WRAM_SIZE       0x01FFFF
 
+#define LoROM           1
+#define HiROM           2
+#define ExHiROM         3
+
+#define FRAME_WIDTH         256 
+#define FRAME_HEIGHT        240
+// value of width * height * 3
+#define FRAME_LENGTH        184320
+// width of frame/screen * 3 = 256 * 3
+#define FRAME_PITCH         768
+
+enum JoypadButtons
+{
+    JOY_R       = 0b0000000000010000,
+    JOY_L       = 0b0000000000100000,
+    JOY_X       = 0b0000000001000000,
+    JOY_A       = 0b0000000010000000,
+    JOY_RIGHT   = 0b0000000100000000,
+    JOY_LEFT    = 0b0000001000000000,
+    JOY_DOWN    = 0b0000010000000000,
+    JOY_UP      = 0b0000100000000000,
+    JOY_START   = 0b0001000000000000,
+    JOY_SELECT  = 0b0010000000000000,
+    JOY_Y       = 0b0100000000000000,
+    JOY_B       = 0b1000000000000000
+};
+
 enum AddressingMode
 {
     ACCUMULATOR,
@@ -75,11 +102,6 @@ typedef struct
 
 typedef struct
 {
-    unsigned char       hi, lo, latch;
-} OAMADD;
-
-typedef struct
-{
     unsigned char       hi, lo;
 } VMADD;
 
@@ -102,12 +124,14 @@ typedef struct
 
 typedef struct
 {
+    unsigned char       *frame_data;
+
     unsigned char       dmapn[8], bbadn[8], nltrn[8],
                         dasbn[8], dasnl[8], dasnh[8], 
                         a1tnb[8], a1tnl[8], a1tnh[8], 
                         a2anl[8], a2anh[8];
 
-    unsigned char       oam[544], ophct_byte, opvct_byte,
+    unsigned char       vram[0xFFFF], oam[544], oam_latch, ophct_byte, opvct_byte,
                         counter_latch, bgmode, bg12nba, bg34nba, 
                         bg1sc, bg2sc, bg3sc, bg4sc, 
                         inidisp, mosaic, vmain,
@@ -117,16 +141,15 @@ typedef struct
                         wbglog, wobjlog, w12sel, w34sel, wobjsel, wh0, wh1, wh2, wh3,
                         tm, ts, tmw, tsw, stat77, stat78;
 
-    unsigned short      bg1vofs, bg2vofs, bg3vofs, bg4vofs, 
+    unsigned short      cgram[256], bg1vofs, bg2vofs, bg3vofs, bg4vofs, 
                         bg1hofs, bg2hofs, bg3hofs, bg4hofs, 
                         m7c, m7d, m7x, m7y, m7hofs, m7vofs, 
-                        oamaddr, vmadd_latch, cgdata, ophct, opvct;
+                        oamaddr, vram_latch, ophct, opvct;
 
     short               m7a, m7b;
 
     int                 m7_multi_result;
 
-    OAMADD              oamadd;
     VMADD               vmadd;
     VMDATA              vmdata;
 } PPU;
@@ -148,7 +171,7 @@ typedef struct
                         vtimer, htimer;
 
     unsigned char       wram[WRAM_SIZE], data_bank, program_bank, status, 
-                        nmitimen, divisor, timeup, rdnmi, mdmaen, hdmaen;
+                        nmitimen, divisor, timeup, rdnmi, mdmaen, hdmaen, wrio;
 
     unsigned char       memsel:1, emulation_mode:1, interrupt:1, stop:1, wait:1;
 
@@ -165,9 +188,20 @@ extern void             rom_load(BUS*);
 
 extern unsigned char    dma_mem_read(BUS*, unsigned int addr);
 
+extern void             frame_set_pixel(unsigned char frame_data[], short x, short y, unsigned char rgb[3]);
+
 extern void             ppu_increment_vmadd(VMADD*, unsigned char inc);
 extern unsigned short   ppu_get_vmadd(VMADD);
+
+extern void             ppu_render_bg(PPU*, unsigned short *tilemap, unsigned short chr_addr, unsigned char cgram);
+extern void             ppu_render_mode(PPU*);
+extern void             ppu_render_oam(PPU*);
+extern void             ppu_render(PPU*);
+
 extern unsigned char    ppu_mem_read(BUS*, unsigned int addr);
+extern void             ppu_mem_write(BUS*, unsigned int addr, unsigned char data);
+
+extern void             ppu_init(PPU*);
 
 extern void             bus_addr_set(WMADD*, unsigned int data);
 extern unsigned int     bus_addr_get(WMADD);

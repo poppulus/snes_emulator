@@ -24,6 +24,8 @@ int rom_validate(unsigned char buf[])
         return 2;
     }
 
+    // look for ExHiROM header
+
     checksum = (unsigned short)buf[ROM_EX_CHECKSUM] << 8 | buf[ROM_EX_CHECKSUM + 1];
     compliment = (unsigned short)buf[ROM_EX_COMPLIMENT] << 8 | buf[ROM_EX_COMPLIMENT + 1];
 
@@ -163,148 +165,220 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
             data = bus->ppu.bbadn[7];
             break;
         case A1T0L:
+            data = bus->ppu.a1tnl[0];
             break;
         case 0x4312:
+            data = bus->ppu.a1tnl[1];
             break;
         case 0x4322:
+            data = bus->ppu.a1tnl[2];
             break;
         case 0x4332:
+            data = bus->ppu.a1tnl[3];
             break;
         case 0x4342:
+            data = bus->ppu.a1tnl[4];
             break;
         case 0x4352:
+            data = bus->ppu.a1tnl[5];
             break;
         case 0x4362:
+            data = bus->ppu.a1tnl[6];
             break;
         case 0x4372:
+            data = bus->ppu.a1tnl[7];
             break;
         case A1T0H:
+            data = bus->ppu.a1tnh[0];
             break;
         case 0x4313:
+            data = bus->ppu.a1tnh[1];
             break;
         case 0x4323:
+            data = bus->ppu.a1tnh[2];
             break;
         case 0x4333:
+            data = bus->ppu.a1tnh[3];
             break;
         case 0x4343:
+            data = bus->ppu.a1tnh[4];
             break;
         case 0x4353:
+            data = bus->ppu.a1tnh[5];
             break;
         case 0x4363:
+            data = bus->ppu.a1tnh[6];
             break;
         case 0x4373:
+            data = bus->ppu.a1tnh[7];
             break;
         case A1B0:
+            data = bus->ppu.a1tnb[0];
             break;
         case 0x4314:
+            data = bus->ppu.a1tnb[1];
             break;
         case 0x4324:
+            data = bus->ppu.a1tnb[2];
             break;
         case 0x4334:
+            data = bus->ppu.a1tnb[3];
             break;
         case 0x4344:
+            data = bus->ppu.a1tnb[4];
             break;
         case 0x4354:
+            data = bus->ppu.a1tnb[5];
             break;
         case 0x4364:
+            data = bus->ppu.a1tnb[6];
             break;
         case 0x4374:
+            data = bus->ppu.a1tnb[7];
             break;
         case DAS0L:
+            data = bus->ppu.dasnl[0];
             break;
         case 0x4315:
+            data = bus->ppu.dasnl[1];
             break;
         case 0x4325:
+            data = bus->ppu.dasnl[2];
             break;
         case 0x4335:
+            data = bus->ppu.dasnl[3];
             break;
         case 0x4345:
+            data = bus->ppu.dasnl[4];
             break;
         case 0x4355:
+            data = bus->ppu.dasnl[5];
             break;
         case 0x4365:
+            data = bus->ppu.dasnl[6];
             break;
         case 0x4375:
+            data = bus->ppu.dasnl[7];
             break;
         case DAS0H:
+            data = bus->ppu.dasnh[0];
             break;
         case 0x4316:
+            data = bus->ppu.dasnh[1];
             break;
         case 0x4326:
+            data = bus->ppu.dasnh[2];
             break;
         case 0x4336:
+            data = bus->ppu.dasnh[3];
             break;
         case 0x4346:
+            data = bus->ppu.dasnh[4];
             break;
         case 0x4356:
+            data = bus->ppu.dasnh[5];
             break;
         case 0x4366:
+            data = bus->ppu.dasnh[6];
             break;
         case 0x4376:
+            data = bus->ppu.dasnh[7];
             break;
         case DASB0:
+            data = bus->ppu.dasbn[0];
             break;
         case 0x4317:
+            data = bus->ppu.dasbn[1];
             break;
         case 0x4327:
+            data = bus->ppu.dasbn[2];
             break;
         case 0x4337:
+            data = bus->ppu.dasbn[3];
             break;
         case 0x4347:
+            data = bus->ppu.dasbn[4];
             break;
         case 0x4357:
+            data = bus->ppu.dasbn[5];
             break;
         case 0x4367:
+            data = bus->ppu.dasbn[6];
             break;
         case 0x4377:
+            data = bus->ppu.dasbn[7];
             break;
         case A2A0L:
+            data = bus->ppu.a2anl[0];
             break;
         case 0x4318:
+            data = bus->ppu.a2anl[1];
             break;
         case 0x4328:
+            data = bus->ppu.a2anl[2];
             break;
         case 0x4338:
+            data = bus->ppu.a2anl[3];
             break;
         case 0x4348:
+            data = bus->ppu.a2anl[4];
             break;
         case 0x4358:
+            data = bus->ppu.a2anl[5];
             break;
         case 0x4368:
+            data = bus->ppu.a2anl[6];
             break;
         case 0x4378:
+            data = bus->ppu.a2anl[7];
             break;
         case A2A0H:
+            data = bus->ppu.a2anh[0];
             break;
         case 0x4319:
+            data = bus->ppu.a2anh[1];
             break;
         case 0x4329:
+            data = bus->ppu.a2anh[2];
             break;
         case 0x4339:
+            data = bus->ppu.a2anh[3];
             break;
         case 0x4349:
+            data = bus->ppu.a2anh[4];
             break;
         case 0x4359:
+            data = bus->ppu.a2anh[5];
             break;
         case 0x4369:
+            data = bus->ppu.a2anh[6];
             break;
         case 0x4379:
+            data = bus->ppu.a2anh[7];
             break;
         case NLTR0:
+            data = bus->ppu.nltrn[0];
             break;
         case 0x431A:
+            data = bus->ppu.nltrn[1];
             break;
         case 0x432A:
+            data = bus->ppu.nltrn[2];
             break;
         case 0x433A:
+            data = bus->ppu.nltrn[3];
             break;
         case 0x434A:
+            data = bus->ppu.nltrn[4];
             break;
         case 0x435A:
+            data = bus->ppu.nltrn[5];
             break;
         case 0x436A:
+            data = bus->ppu.nltrn[6];
             break;
         case 0x437A:
+            data = bus->ppu.nltrn[7];
             break;
         case UNUSEDn1:
             break;
@@ -343,11 +417,23 @@ unsigned char dma_mem_read(BUS *bus, unsigned int addr)
     return data;
 }
 
+void frame_set_pixel(unsigned char frame_data[], short x, short y, unsigned char rgb[3])
+{
+    int base = (y * 3 * FRAME_WIDTH) + (x * 3);
+
+    if ((base + 2) < FRAME_LENGTH)
+    {
+        frame_data[base] = rgb[0];
+        frame_data[base + 1] = rgb[1];
+        frame_data[base + 2] = rgb[2];
+    }
+}
+
 void ppu_increment_vmadd(VMADD *addr, unsigned char inc)
 {
     unsigned char lo = addr->lo;
 
-    switch (inc)
+    switch (inc & 0b11)
     {
         case 0:
             addr->lo += 1;
@@ -363,7 +449,7 @@ void ppu_increment_vmadd(VMADD *addr, unsigned char inc)
 
     if (addr->lo < lo)
     {
-        switch (inc)
+        switch (inc & 0b11)
         {
             case 0:
                 addr->hi += 1;
@@ -384,6 +470,123 @@ void ppu_increment_vmadd(VMADD *addr, unsigned char inc)
 unsigned short ppu_get_vmadd(VMADD addr)
 {
     return (unsigned short)addr.hi | (unsigned short)addr.lo;
+}
+
+void ppu_render_bg(PPU *ppu, unsigned short *tilemap, unsigned short chr_addr, unsigned char cgram)
+{
+    for (int i = 0; i < 0x800; i++)
+    {
+        unsigned short  tile_index  = tilemap[i] & 0b1111111111;
+
+        unsigned short  *tile       = &tilemap[chr_addr + tile_index];
+
+        unsigned char   palette     = (tilemap[i] & 0b1110000000000) >> 10,
+                        tile_column = i % 32,
+                        tile_row    = i / 32;
+
+        for (int y = 0; y < 8; y++)
+        {
+            unsigned char plane_0 = tile[1], plane_1 = tile[0];
+
+            for (int x = 7; x >= 0; x--)
+            {
+                unsigned char value = (1 & plane_0) << 1 | (1 & plane_1);
+
+                plane_0 >>= 1;
+                plane_1 >>= 1;
+
+                switch (value)
+                {
+                    case 0:
+                    case 1:
+                    case 2:
+                    case 3:
+                        break;
+                }
+
+                unsigned char   pixel_x     = (tile_column << 3) + x,
+                                pixel_y     = (tile_row << 3) + y;
+                            
+                unsigned short  rgb         = ppu->cgram[cgram + palette + value];
+
+                unsigned char   rgb_r       = rgb & 0b11111,
+                                rgb_g       = (rgb >> 5) & 0b11111,
+                                rgb_b       = (rgb >> 10) & 0b11111;
+
+                unsigned char   rgb_arr[3]  = {rgb_r, rgb_g, rgb_b};
+
+                frame_set_pixel(ppu->frame_data, pixel_x, pixel_y, rgb_arr);
+            }
+        }
+    }
+}
+
+void ppu_render_mode(PPU *ppu)
+{
+    unsigned char   mode = ppu->bgmode & 0b111,
+
+                    bg1_vram_addr = (ppu->bg1sc & 0b11111100) >> 2,
+                    bg2_vram_addr = (ppu->bg2sc & 0b11111100) >> 2,
+                    bg3_vram_addr = (ppu->bg3sc & 0b11111100) >> 2,
+                    bg4_vram_addr = (ppu->bg4sc & 0b11111100) >> 2;
+
+    unsigned short  bg1_chr_addr =  (ppu->bg12nba & 0b1111) << 12,
+                    bg2_chr_addr =  (ppu->bg12nba & 0b11110000) << 8,
+                    bg3_chr_addr =  (ppu->bg34nba & 0b1111) << 12,
+                    bg4_chr_addr =  (ppu->bg34nba & 0b11110000) << 8;
+
+    unsigned short  *bg1_nametable = (unsigned short*)&ppu->vram[bg1_vram_addr << 10],
+                    *bg2_nametable = (unsigned short*)&ppu->vram[bg2_vram_addr << 10],
+                    *bg3_nametable = (unsigned short*)&ppu->vram[bg3_vram_addr << 10],
+                    *bg4_nametable = (unsigned short*)&ppu->vram[bg4_vram_addr << 10];
+
+    printf("render mode: %d\n", mode);
+
+    switch (mode)
+    {
+        case 0:
+            ppu_render_bg(ppu, bg4_nametable, bg4_chr_addr, 48);
+            ppu_render_bg(ppu, bg3_nametable, bg3_chr_addr, 32);
+            ppu_render_bg(ppu, bg2_nametable, bg2_chr_addr, 16);
+            ppu_render_bg(ppu, bg1_nametable, bg1_chr_addr, 0);
+            break;
+        case 1:
+            break;
+        case 2:
+            break;
+        case 3:
+            break;
+        case 4:
+            break;
+        case 5:
+            break;
+        case 6:
+            break;
+        case 7:
+            break;
+    }
+}
+
+void ppu_render_oam(PPU *ppu)
+{
+    for (int i = 0; i < 256; i+=4)
+    {
+        unsigned char   tile_x      = ppu->oam[i],
+                        tile_y      = ppu->oam[i + 1],
+                        tile_pal    = (ppu->oam[i + 3] >> 1) & 0b111,
+                        tile_prio   = (ppu->oam[i + 3] >> 4) & 0b11;
+
+        unsigned char   tile_flip_h = ppu->oam[i + 3] & 0b01000000,
+                        tile_flip_v = ppu->oam[i + 3] & 0b10000000;
+
+        unsigned short  tile_select = ppu->oam[i + 2] | (ppu->oam[i + 3] & 1);
+    }
+}
+
+void ppu_render(PPU *ppu)
+{
+    ppu_render_mode(ppu);
+    //ppu_render_oam(ppu);
 }
 
 unsigned char ppu_mem_read(BUS *bus, unsigned int addr)
@@ -410,28 +613,28 @@ unsigned char ppu_mem_read(BUS *bus, unsigned int addr)
             bus->ppu.oamaddr += 1;
             break;
         case VMDATALREAD:
-            data = bus->ppu.vmadd_latch & 0xFF;
+            data = bus->ppu.vram_latch & 0xFF;
             
             if (!(bus->ppu.vmain & 0b10000000))
             {
-                bus->ppu.vmadd_latch = ppu_get_vmadd(bus->ppu.vmadd);
+                bus->ppu.vram_latch = bus->ppu.vram[ppu_get_vmadd(bus->ppu.vmadd)];
                 ppu_increment_vmadd(&bus->ppu.vmadd, bus->ppu.vmain);
             }
             break;
         case VMDATAHREAD:
-            data = (bus->ppu.vmadd_latch & 0xFF00) >> 8;
+            data = (bus->ppu.vram_latch & 0xFF00) >> 8;
 
             if (bus->ppu.vmain & 0b10000000)
             {
-                bus->ppu.vmadd_latch = ppu_get_vmadd(bus->ppu.vmadd);
+                bus->ppu.vram_latch = bus->ppu.vram[ppu_get_vmadd(bus->ppu.vmadd)];
                 ppu_increment_vmadd(&bus->ppu.vmadd, bus->ppu.vmain);
             }
             break;
         case CGDATAREAD:
             if (bus->ppu.cgram_byte == 0)
-                data = bus->ppu.cgdata & 0xFF;
+                data = bus->ppu.cgram[bus->ppu.cgadd] & 0xFF;
             else if (bus->ppu.cgram_byte == 1)
-                data = (bus->ppu.cgdata & 0xFF00) >> 8;
+                data = (bus->ppu.cgram[bus->ppu.cgadd] & 0xFF00) >> 8;
 
             bus->ppu.cgram_byte = ~bus->ppu.cgram_byte;
             break;
@@ -477,22 +680,21 @@ void ppu_mem_write(BUS *bus, unsigned int addr, unsigned char data)
             bus->ppu.objsel = data;
             break;
         case OAMADDL:
-            bus->ppu.oamadd.lo = data;
-            bus->ppu.oamaddr |= bus->ppu.oamadd.lo;
+            bus->ppu.oamaddr |= data;
             bus->ppu.oamaddr = (bus->ppu.oamaddr & 0x1FF) << 1;
             break;
         case OAMADDH:
-            bus->ppu.oamadd.hi = data & 0b10000001;
-            bus->ppu.oamaddr |= (unsigned short)(bus->ppu.oamadd.hi << 7);
+            unsigned char hi = data & 0b10000001;
+            bus->ppu.oamaddr |= (unsigned short)hi << 8;
             bus->ppu.oamaddr = (bus->ppu.oamaddr & 0x1FF) << 1;
             break;
         case OAMDATA:
             if ((bus->ppu.oamaddr & 1) == 0)
-                bus->ppu.oamadd.latch = data;
+                bus->ppu.oam_latch = data;
 
             if (bus->ppu.oamaddr < 0x200 && bus->ppu.oamaddr & 0b1)
             {
-                bus->ppu.oam[bus->ppu.oamaddr - 1] = bus->ppu.oamadd.latch;
+                bus->ppu.oam[bus->ppu.oamaddr - 1] = bus->ppu.oam_latch;
                 bus->ppu.oam[bus->ppu.oamaddr] = data;
             }
 
@@ -572,11 +774,11 @@ void ppu_mem_write(BUS *bus, unsigned int addr, unsigned char data)
             break;
         case VMADDL:
             bus->ppu.vmadd.lo = data;
-            bus->ppu.vmadd_latch = ppu_get_vmadd(bus->ppu.vmadd);
+            bus->ppu.vram_latch = bus->ppu.vram[ppu_get_vmadd(bus->ppu.vmadd)];
             break;
         case VMADDH:
             bus->ppu.vmadd.hi = data;
-            bus->ppu.vmadd_latch = ppu_get_vmadd(bus->ppu.vmadd);
+            bus->ppu.vram_latch = bus->ppu.vram[ppu_get_vmadd(bus->ppu.vmadd)];
             break;
         case VMDATAL:
             bus->ppu.vmdata.lo = data;
@@ -627,7 +829,7 @@ void ppu_mem_write(BUS *bus, unsigned int addr, unsigned char data)
             if (bus->ppu.cgram_byte == 0)
                 bus->ppu.cgram_latch = data;
             else if (bus->ppu.cgram_byte == 1)
-                bus->ppu.cgdata = (unsigned short)(data << 8) | bus->ppu.cgram_latch;
+                bus->ppu.cgram[bus->ppu.cgadd++] = (unsigned short)(data << 8) | bus->ppu.cgram_latch;
 
             bus->ppu.cgram_byte = ~bus->ppu.cgram_byte;
             break;
@@ -683,6 +885,11 @@ void ppu_mem_write(BUS *bus, unsigned int addr, unsigned char data)
             bus->ppu.setini = data;
             break;
     }
+}
+
+void ppu_init(PPU *ppu)
+{
+    
 }
 
 void bus_addr_set(WMADD *addr, unsigned int data)
@@ -766,6 +973,7 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
         case HVBJOY:
             break;
         case RDIO:
+            data = cpu->wrio;
             break;
         case RDDIVL:
             data = cpu->dividend.lo;
@@ -962,6 +1170,7 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
             bus_joypad_write(cpu->bus.joypad, data);
             break;
         case WRIO:
+            cpu->wrio = data;
             break;
         case WRMPYA:
             cpu->multiply._a = data;
@@ -999,6 +1208,12 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
 
 void bus_init(BUS *bus)
 {
+    bus->joypad->btn_status = 0;
+    bus->joypad->index = 0;
+    bus->joypad->strobe = 0;
+
+    bus->rom_buffer = NULL;
+
     int i = 0;
     
     for (; i < 8; i++)
@@ -2117,7 +2332,7 @@ void cpu_ror(enum AddressingMode mode, CPU *cpu)
 
             old_bits = low_acc;
             shift = low_acc >> 1;
-            rotate = low_acc << 7;
+            rotate = low_acc << 8;
 
             cpu->register_a = (unsigned char)(shift | rotate);
             result = (unsigned char)cpu->register_a;
@@ -2128,7 +2343,7 @@ void cpu_ror(enum AddressingMode mode, CPU *cpu)
 
             old_bits = cpu->wram[addr];
             shift = cpu->wram[addr] >> 1;
-            rotate = cpu->wram[addr] << 7;
+            rotate = cpu->wram[addr] << 8;
 
             cpu->wram[addr] = shift | rotate;
             result = cpu->wram[addr];
@@ -3362,7 +3577,7 @@ void cpu_interpret(CPU *cpu)
         }
     }
 
-    unsigned char operand = 0;
+    unsigned char operand = cpu_mem_read_u8(cpu, cpu->program_counter);
 
     switch (operand)
     {
@@ -4663,11 +4878,11 @@ void cpu_init(CPU *cpu)
 
     cpu->dividend.hi = 0xFF;
     cpu->dividend.lo = 0xFF;
-
     cpu->multiply._a = 0xFF;
+    cpu->wrio = 0xFF;
 
     cpu->mdmaen = 0;
     cpu->hdmaen = 0;
     cpu->nmitimen = 0;
-    cpu->program_counter = 0;   
+    cpu->program_counter = cpu_mem_read_u16(cpu, 0xFFFA);   
 }

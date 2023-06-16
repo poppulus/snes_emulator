@@ -24,7 +24,7 @@ COMPILER_FLAGS = -Wall -g
 
 #LINKER_FLAGS specifies the libraries we're linking against
 # `pkg-config --libs gtk4` -lSDL2 -lSDL2_mixer gtk+-3.0 -ljack -lasound -pthread -lrt -lm -lportaudio 
-LINKER_FLAGS =  #-lGL -lGLEW -lglut 
+LINKER_FLAGS =  -lGL -lGLEW -lglut 
 
 #OBJ_NAME specifies the name of our exectuable
 OBJ_NAME = snes
