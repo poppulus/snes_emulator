@@ -124,6 +124,8 @@ typedef struct
 
 typedef struct
 {
+    unsigned char       nmi_vblank:1, nmi_write:1;
+
     unsigned char       *frame_data;
 
     unsigned char       dmapn[8], bbadn[8], nltrn[8],
@@ -141,7 +143,8 @@ typedef struct
                         wbglog, wobjlog, w12sel, w34sel, wobjsel, wh0, wh1, wh2, wh3,
                         tm, ts, tmw, tsw, stat77, stat78;
 
-    unsigned short      cgram[256], bg1vofs, bg2vofs, bg3vofs, bg4vofs, 
+    unsigned short      cgram[256], dot_cycles, scanline,
+                        bg1vofs, bg2vofs, bg3vofs, bg4vofs, 
                         bg1hofs, bg2hofs, bg3hofs, bg4hofs, 
                         m7c, m7d, m7x, m7y, m7hofs, m7vofs, 
                         oamaddr, vram_latch, ophct, opvct;
@@ -187,6 +190,7 @@ extern int              rom_validate(unsigned char[]);
 extern void             rom_load(BUS*);
 
 extern unsigned char    dma_mem_read(BUS*, unsigned int addr);
+extern void             dma_mem_write(BUS*, unsigned int addr, unsigned char data);
 
 extern void             frame_set_pixel(unsigned char frame_data[], short x, short y, unsigned char rgb[3]);
 
@@ -214,6 +218,8 @@ extern unsigned char    bus_mem_read(CPU*, unsigned int pos);
 extern void             bus_mem_write(CPU*, unsigned int pos, unsigned char data);
 
 extern void             bus_init(BUS*);
+
+extern void             cpu_interrupt_nmi(CPU*);
 
 extern unsigned int     cpu_get_operand_address(CPU*, enum AddressingMode);
 
