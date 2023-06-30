@@ -66,11 +66,11 @@ void rom_load(BUS *bus)
         printf("probably a headered ROM with an extra 512 bytes of padding\n");
     }
 
-    int rom_type = rom_validate(buf);
+    bus->rom_type = rom_validate(buf);
 
     // make sure ROM is of the right type
 
-    switch (rom_type)
+    switch (bus->rom_type)
     {
         default: break;
         case 0:
@@ -692,6 +692,276 @@ void dma_mem_write(BUS *bus, unsigned int addr, unsigned char data)
     }
 }
 
+void dma_dma_write(CPU *cpu, unsigned char channel)
+{
+    unsigned char   count       = 0,
+                    pattern     = cpu->bus.ppu.dmapn[channel] & 0b111,
+                    addr_adjust = (cpu->bus.ppu.dmapn[channel] >> 3) & 0b11;
+
+    unsigned int    a_bus       = (cpu->bus.ppu.a1tnb[channel] << 16) | (cpu->bus.ppu.a1tnh[channel] << 8) | cpu->bus.ppu.a1tnl[channel];
+
+    unsigned short  byte_count  = (cpu->bus.ppu.dasnh[channel] << 8) | cpu->bus.ppu.dasnl[channel],
+                    b_bus       = 0x2100 | cpu->bus.ppu.bbadn[channel];
+
+    printf("DMA %X %X %d\n", a_bus, b_bus, pattern);
+
+    if (cpu->bus.ppu.dmapn[0] & 0b10000000)
+    {
+        // copy from bus B to bus A
+        for (int i = 0; i < (byte_count == 0 ? 0xFFFF + 1 : byte_count); i++)
+        {
+            switch (pattern)
+            {
+                case 0:
+                case 2:
+                case 6:
+                    bus_mem_write(cpu, a_bus, bus_mem_read(cpu, b_bus));
+                    break;
+                case 1:
+                case 5:
+                    if (count == 0 && count == 2)
+                        bus_mem_write(cpu, a_bus, bus_mem_read(cpu, b_bus));
+                    else if (count == 1 && count == 3)
+                        bus_mem_write(cpu, a_bus, bus_mem_read(cpu, (b_bus + 1) % 0x2200));
+                    break;
+                case 3:
+                case 7:
+                    if (count == 0 && count == 1)
+                        bus_mem_write(cpu, a_bus, bus_mem_read(cpu, b_bus));
+                    else if (count == 2 && count == 3)
+                        bus_mem_write(cpu, a_bus, bus_mem_read(cpu, b_bus + 1 % 0x2200));
+                    break;
+                case 4:
+                    bus_mem_write(cpu, a_bus, bus_mem_read(cpu, (b_bus + count) % 0x2200));
+                    break;
+            }
+
+            if (++count > 3) count = 0;
+
+            if (addr_adjust == 0)
+                a_bus += 1;
+            else if (addr_adjust == 2)
+                a_bus -= 1;
+        }
+    }
+    else
+    {
+        // copy from bus A to bus B
+        for (int i = 0; i < (byte_count == 0 ? 0xFFFF + 1 : byte_count); i++)
+        {
+            switch (pattern)
+            {
+                case 0:
+                case 2:
+                case 6:
+                    bus_mem_write(cpu, b_bus, bus_mem_read(cpu, a_bus));
+                    break;
+                case 1:
+                case 5:
+                    if (count == 0 && count == 2)
+                        bus_mem_write(cpu, b_bus, bus_mem_read(cpu, a_bus));
+                    else if (count == 1 && count == 3)
+                        bus_mem_write(cpu, (b_bus + 1) % 0x2200, bus_mem_read(cpu, a_bus));
+                    break;
+                case 3:
+                case 7:
+                    if (count == 0 && count == 1)
+                        bus_mem_write(cpu, b_bus, bus_mem_read(cpu, a_bus));
+                    else if (count == 2 && count == 3)
+                        bus_mem_write(cpu, (b_bus + 1) % 0x2200, bus_mem_read(cpu, a_bus));
+                    break;
+                case 4:
+                    bus_mem_write(cpu, (b_bus + count) % 0x2200, bus_mem_read(cpu, a_bus));
+                    break;
+            }
+
+            if (++count > 3) count = 0;
+
+            if (addr_adjust == 0)
+                a_bus += 1;
+            else if (addr_adjust == 2)
+                a_bus -= 1;
+        }
+    }
+
+    cpu->bus.ppu.dasnl[channel] = 0;
+    cpu->bus.ppu.dasnh[channel] = 0;
+}
+void dma_hdma_write(CPU *cpu, unsigned char channel)
+{
+    unsigned char   count       = 0,
+                    pattern     = cpu->bus.ppu.dmapn[channel] & 0b111,
+                    addr_adjust = (cpu->bus.ppu.dmapn[channel] >> 3) & 0b11,
+                    line_count  = cpu->bus.ppu.nltrn[channel];
+
+    unsigned int    a_bus       = (cpu->bus.ppu.a1tnb[channel] << 16) | (cpu->bus.ppu.a1tnh[channel] << 8) | cpu->bus.ppu.a1tnl[channel];
+
+    unsigned short  b_bus       = 0x2100 + cpu->bus.ppu.bbadn[channel];
+
+    //printf("HDMA %X %X %d\n", a_bus, b_bus, channel);
+
+    cpu->bus.ppu.a2anl[channel] = cpu->bus.ppu.a1tnl[channel];
+    cpu->bus.ppu.a2anh[channel] = cpu->bus.ppu.a1tnh[channel];
+
+    if (cpu->bus.ppu.dmapn[channel] & 0b01000000)
+    {
+        // indirect address
+        unsigned int ind_addr = (cpu->bus.ppu.dasbn[channel] << 16) | (cpu->bus.ppu.dasnh[channel] << 8) | cpu->bus.ppu.dasnl[channel];
+
+        if (cpu->bus.ppu.dmapn[0] & 0b10000000)
+        {
+            // copy from bus B to bus A
+
+        }
+        else
+        {
+            // copy from bus A to bus B
+
+        }
+    }
+    else
+    {
+        // direct address
+        if (cpu->bus.ppu.dmapn[0] & 0b10000000)
+        {
+            // copy from bus B to bus A
+            switch (pattern)
+            {
+                case 0:
+                case 2:
+                case 6:
+                    if (cpu->bus.ppu.nltrn[0] & 0b10000000)
+                    {
+                        for (int i = 0; i < (line_count & 0b01111111); i++)
+                        {
+                            bus_mem_write(cpu, a_bus, bus_mem_read(cpu, b_bus));
+
+                            if (addr_adjust == 0)
+                                a_bus += 1;
+                            else if (addr_adjust == 2)
+                                a_bus -= 1;
+                        }
+                    }
+                    else
+                    {
+                        bus_mem_write(cpu, a_bus, bus_mem_read(cpu, b_bus));
+                    }
+                    break;
+                case 1:
+                case 5:
+                    if (cpu->bus.ppu.nltrn[0] & 0b10000000)
+                    {
+                        for (int i = 0; i < (line_count & 0b01111111) << 1; i++)
+                        {
+                            bus_mem_write(cpu, a_bus, bus_mem_read(cpu, b_bus + (i % 2) % 0x2200));
+
+                            if (addr_adjust == 0)
+                                a_bus += 1;
+                            else if (addr_adjust == 2)
+                                a_bus -= 1;
+                        }
+                    }
+                    else
+                    {
+                        bus_mem_write(cpu, a_bus, bus_mem_read(cpu, b_bus));
+
+                        if (addr_adjust == 0)
+                            a_bus += 1;
+                        else if (addr_adjust == 2)
+                            a_bus -= 1;
+
+                        bus_mem_write(cpu, a_bus, bus_mem_read(cpu, (b_bus + 1) % 0x2200));
+                    }
+                    break;
+                case 3:
+                case 7:
+                    unsigned char pos = 0;
+
+                    if (cpu->bus.ppu.nltrn[0] & 0b10000000)
+                    {
+                        for (int i = 0; i < (line_count & 0b01111111) << 2; i++)
+                        {
+                            if (i % 4 == 0 && i % 4 == 1) pos = 0;
+                            else if (i % 4 == 2 && i % 4 == 3) pos = 1;
+
+                            bus_mem_write(cpu, a_bus, bus_mem_read(cpu, (b_bus + pos) % 0x2200));
+
+                            if (addr_adjust == 0)
+                                a_bus += 1;
+                            else if (addr_adjust == 2)
+                                a_bus -= 1;
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < 4; i++)
+                        {
+                            if (i == 0 && i == 1) pos = 0;
+                            else if (i == 2 && i == 3) pos = 1;
+
+                            bus_mem_write(cpu, a_bus, bus_mem_read(cpu, (b_bus + pos) % 0x2200));
+
+                            if (addr_adjust == 0)
+                                a_bus += 1;
+                            else if (addr_adjust == 2)
+                                a_bus -= 1;
+                        }
+                    }
+                    
+                    break;
+                case 4:
+                    for (int i = 0; i < 4; i++)
+                    {
+                        bus_mem_write(cpu, a_bus, bus_mem_read(cpu, (b_bus + i) % 0x2200));
+
+                        if (addr_adjust == 0)
+                            a_bus += 1;
+                        else if (addr_adjust == 2)
+                            a_bus -= 1;
+                    }
+                    break;
+            }
+        }
+        else
+        {
+            // copy from bus A to bus B
+            switch (pattern)
+            {
+                case 0:
+                case 2:
+                case 6:
+                    bus_mem_write(cpu, b_bus, bus_mem_read(cpu, a_bus));
+                    break;
+                case 1:
+                case 5:
+                    bus_mem_write(cpu, b_bus, bus_mem_read(cpu, a_bus));
+
+                    if (addr_adjust == 0)
+                        a_bus += 1;
+                    else if (addr_adjust == 2)
+                        a_bus -= 1;
+
+                    bus_mem_write(cpu, (b_bus + 1) % 0x2200, bus_mem_read(cpu, a_bus));
+                    break;
+                case 3:
+                case 7:
+                    bus_mem_write(cpu, b_bus, bus_mem_read(cpu, a_bus));
+                    
+                    if (addr_adjust == 0)
+                        a_bus += 1;
+                    else if (addr_adjust == 2)
+                        a_bus -= 1;
+
+                    bus_mem_write(cpu, (b_bus + 1) % 0x2200, bus_mem_read(cpu, a_bus));
+                    break;
+                case 4:
+                    bus_mem_write(cpu, (b_bus + count) % 0x2200, bus_mem_read(cpu, a_bus));
+                    break;
+            }
+        }
+    }
+}
+
 void frame_set_pixel(unsigned char frame_data[], short x, short y, unsigned char rgb[3])
 {
     int base = (y * 3 * FRAME_WIDTH) + (x * 3);
@@ -761,34 +1031,30 @@ void ppu_render_bg(PPU *ppu, unsigned short *tilemap, unsigned short chr_addr, u
 
         for (int y = 0; y < 8; y++)
         {
-            unsigned char   plane_0 = tile[0] & 0xFF, 
-                            plane_1 = (tile[0] && 0xFF00) >> 8;
+            unsigned char   plane_0 = tile[y] & 0xFF, 
+                            plane_1 = (tile[y] && 0xFF00) >> 8,
+                            plane_2 = tile[y + 8] & 0xFF, 
+                            plane_3 = (tile[y + 8] && 0xFF00) >> 8;
 
             for (int x = 7; x >= 0; x--)
             {
-                unsigned char value = (1 & plane_0) << 1 | (1 & plane_1);
+                unsigned char value = (1 & plane_0) << 1 | (1 & plane_1) | (1 & plane_2) << 1 | (1 & plane_3);
+
+                //printf("palette value: %d\n", value);
 
                 plane_0 >>= 1;
                 plane_1 >>= 1;
-
-                switch (value)
-                {
-                    case 0:
-
-                    case 1:
-                    case 2:
-                    case 3:
-                        break;
-                }
+                plane_2 >>= 1;
+                plane_3 >>= 1;
 
                 unsigned char   pixel_x     = (tile_column << 3) + x,
                                 pixel_y     = (tile_row << 3) + y;
                             
-                unsigned short  rgb         = ppu->cgram[cgram + palette + value];
+                unsigned short  rgb         = ppu->cgram[cgram + (palette * value)];
 
-                unsigned char   rgb_r       = rgb & 0b11111,
-                                rgb_g       = (rgb >> 5) & 0b11111,
-                                rgb_b       = (rgb >> 10) & 0b11111;
+                unsigned char   rgb_r       = (rgb & 0b11111) << 3,
+                                rgb_g       = ((rgb >> 5) & 0b11111) << 3,
+                                rgb_b       = ((rgb >> 10) & 0b11111) << 3;
 
                 unsigned char   rgb_arr[3]  = {rgb_r, rgb_g, rgb_b};
 
@@ -1100,7 +1366,6 @@ void ppu_mem_write(BUS *bus, unsigned int addr, unsigned char data)
             bus->ppu.mode7_latch = data;
             break;
         case CGADD:
-            printf("cgadd = %d\n", data);
             bus->ppu.cgadd = data;
             bus->ppu.cgram_byte = 0;
             break;
@@ -1168,7 +1433,8 @@ void ppu_mem_write(BUS *bus, unsigned int addr, unsigned char data)
 
 void ppu_init(PPU *ppu)
 {
-    
+    ppu->nmi_vblank = 0;
+    ppu->nmi_write = 0;
 }
 
 void bus_addr_set(WMADD *addr, unsigned int data)
@@ -1227,6 +1493,9 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
 
     switch (pos)
     {
+        case 0x0000 ... 0x2000:
+            data = cpu->wram[pos];
+            break;
         case PPU_START ... PPU_END:
             data = ppu_mem_read(&cpu->bus, pos);
             break;
@@ -1239,7 +1508,7 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
         case APUIO3:
             break;
         case WMDATA:
-            data = cpu->wram[bus_addr_get(cpu->address)];
+            data = cpu->wram[bus_addr_get(cpu->address) % 0x1FFFF];
             break;
         case RDNMI:
             data = cpu->rdnmi;
@@ -1402,7 +1671,16 @@ unsigned char bus_mem_read(CPU *cpu, unsigned int pos)
             data = dma_mem_read(&cpu->bus, pos);
             break;
         case 0x8000 ... 0xFFFF:
-            data = cpu->bus.rom_buffer[pos - 0x7FFF];
+            unsigned int offset;
+
+            if (cpu->bus.rom_type == LoROM)
+                offset = 0x7FFF;
+            else if (cpu->bus.rom_type == HiROM)
+                offset = 0xFFFF;
+            else if (cpu->bus.rom_type == ExHiROM)
+                offset = 0x40FFFF;
+
+            data = cpu->bus.rom_buffer[pos - offset];
             break;
     }
 
@@ -1413,6 +1691,9 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
 {
     switch (pos)
     {
+        case 0x0000 ... 0x2000:
+            cpu->wram[pos] = data;
+            break;
         case PPU_START ... PPU_END:
             ppu_mem_write(&cpu->bus, pos, data);
             break;
@@ -1425,7 +1706,7 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
         case APUIO3:
             break;
         case WMDATA:
-            cpu->wram[bus_addr_get(cpu->address)] = data;
+            cpu->wram[bus_addr_get(cpu->address) % 0x1FFFF] = data;
             break;
         case WMADDL:
             cpu->address.lo = data;
@@ -1442,52 +1723,14 @@ void bus_mem_write(CPU *cpu, unsigned int pos, unsigned char data)
         case MDMAEN:
             cpu->mdmaen = data;
 
-            if (cpu->mdmaen & 0b1)
-            {
-                unsigned char   pattern     = cpu->bus.ppu.dmapn[0] & 0b111,
-                                addr_adjust = (cpu->bus.ppu.dmapn[0] >> 3) & 0b11;
-
-                unsigned int    a_bus       = (cpu->bus.ppu.a1tnb[0] << 16) | (cpu->bus.ppu.a1tnh[0] << 8) | cpu->bus.ppu.a1tnl[0];
-
-                unsigned short  byte_count  = (cpu->bus.ppu.dasnh[0] << 8) | cpu->bus.ppu.dasnl[0],
-                                b_bus       = 0xFF00 + cpu->bus.ppu.bbadn[0];
-
-                switch (pattern)
-                {
-                    case 0:
-                        break;
-                    case 1:
-                        break;
-                    case 2:
-                        break;
-                    case 3:
-                        break;
-                    case 4:
-                        break;
-                    case 5:
-                        break;
-                    case 6:
-                        break;
-                    case 7:
-                        break;  
-                }
-
-                switch (addr_adjust)
-                {
-                    case 0:
-                        break;
-                    case 1:
-                    case 3:
-                        break;
-                    case 2:
-                        break;
-                }
-
-                if (cpu->bus.ppu.dmapn[0] & 0b10000000)
-                {
-
-                }
-            }
+            if (cpu->mdmaen & 0b1) dma_dma_write(cpu, 0);
+            if (cpu->mdmaen & 0b10) dma_dma_write(cpu, 1);
+            if (cpu->mdmaen & 0b100) dma_dma_write(cpu, 2);
+            if (cpu->mdmaen & 0b1000) dma_dma_write(cpu, 3);
+            if (cpu->mdmaen & 0b10000) dma_dma_write(cpu, 4);
+            if (cpu->mdmaen & 0b100000) dma_dma_write(cpu, 5);
+            if (cpu->mdmaen & 0b1000000) dma_dma_write(cpu, 6);
+            if (cpu->mdmaen & 0b10000000) dma_dma_write(cpu, 7);
             break;
         case HDMAEN:
             cpu->hdmaen = data;
@@ -1669,11 +1912,28 @@ void bus_init(BUS *bus)
 
 void cpu_interrupt_nmi(CPU *cpu)
 {
-    printf("vblank NMI\n");
     if (cpu->emulation_mode)
+    {
+        cpu_mem_write_u16(cpu, 0x0100 + cpu->stack_pointer - 1, cpu->program_counter);
+        cpu->stack_pointer -= 2;
+
+        cpu_mem_write_u8(cpu, 0x0100 + cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer -= 1;
+
         cpu->program_counter = cpu_mem_read_u16(cpu, 0xFFFA);
+    }
     else 
+    {
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter);
+        cpu->stack_pointer -= 2;
+
+        cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
+        cpu->stack_pointer -= 1;
+
         cpu->program_counter = cpu_mem_read_u16(cpu, 0xFFEA);
+    }
+
+    cpu->cycles += 2;
 }
 
 unsigned int cpu_get_operand_address(CPU *cpu, enum AddressingMode mode)
@@ -1856,7 +2116,7 @@ void cpu_adc(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->status & MEMORY_WIDTH)
     {
-        unsigned char   rega_arg = (unsigned char)cpu->register_a ^ cpu->wram[addr],
+        unsigned char   rega_arg = (unsigned char)cpu->register_a ^ cpu->wram[addr % 0x1FFFF],
                         rega_sum = (unsigned char)cpu->register_a ^ (unsigned char)sum;
 
         if (~rega_arg & rega_sum & 0x80)
@@ -2003,14 +2263,14 @@ void cpu_cmp(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->status & MEMORY_WIDTH)
     {
-        if ((unsigned char)cpu->register_a >= cpu->wram[addr])
+        if ((unsigned char)cpu->register_a >= cpu->wram[addr % 0x1FFFF])
             cpu->status |= CARRY_FLAG;
         else 
             cpu->status &= 0b11111110;
 
         unsigned short old = cpu->register_a;
 
-        result = (unsigned char)cpu->register_a - cpu->wram[addr];
+        result = (unsigned char)cpu->register_a - cpu->wram[addr % 0x1FFFF];
         cpu_set_negative_u8(&cpu->status, (unsigned char)result);
         cpu->cycles -= 1;
 
@@ -2064,12 +2324,12 @@ void cpu_cpx(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->status & INDEX_WIDTH)
     {
-        if ((unsigned char)cpu->register_x >= cpu->wram[addr])
+        if ((unsigned char)cpu->register_x >= cpu->wram[addr % 0x1FFFF])
             cpu->status |= CARRY_FLAG;
         else 
             cpu->status &= 0b11111110;
 
-        result = (unsigned char)cpu->register_x - cpu->wram[addr];
+        result = (unsigned char)cpu->register_x - cpu->wram[addr % 0x1FFFF];
         cpu_set_negative_u8(&cpu->status, (unsigned char)result);
         cpu->cycles -= 1;
     }
@@ -2095,12 +2355,12 @@ void cpu_cpy(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->status & INDEX_WIDTH)
     {
-        if ((unsigned char)cpu->register_y >= cpu->wram[addr])
+        if ((unsigned char)cpu->register_y >= cpu->wram[addr % 0x1FFFF])
             cpu->status |= CARRY_FLAG;
         else 
             cpu->status &= 0b11111110;
 
-        result = (unsigned char)cpu->register_y - cpu->wram[addr];
+        result = (unsigned char)cpu->register_y - cpu->wram[addr % 0x1FFFF];
         cpu_set_negative_u8(&cpu->status, (unsigned char)result);
         cpu->cycles -= 1;
     }
@@ -2133,8 +2393,8 @@ void cpu_dec(enum AddressingMode mode, CPU *cpu)
         else
         {
             unsigned int addr = cpu_get_operand_address(cpu, mode);
-            cpu->wram[addr] -= 1;
-            result = cpu->wram[addr];
+            cpu->wram[addr % 0x1FFFF] -= 1;
+            result = cpu->wram[addr % 0x1FFFF];
         }
         cpu_set_negative_u8(&cpu->status, (unsigned char)result);
         cpu->cycles -= 2;
@@ -2205,8 +2465,8 @@ void cpu_inc(enum AddressingMode mode, CPU *cpu)
         else
         {
             unsigned int addr = cpu_get_operand_address(cpu, mode);
-            cpu->wram[addr] += 1;
-            result = cpu->wram[addr];
+            cpu->wram[addr % 0x1FFFF] += 1;
+            result = cpu->wram[addr % 0x1FFFF];
         }
         cpu_set_negative_u8(&cpu->status, (unsigned char)result);
         cpu->cycles -= 2;
@@ -2271,7 +2531,7 @@ void cpu_and(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->register_a;
         
-        cpu->register_a = ((unsigned char)cpu->register_a & cpu->wram[addr]);
+        cpu->register_a = ((unsigned char)cpu->register_a & cpu->wram[addr % 0x1FFFF]);
         cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_a);
         cpu->cycles -= 1;
 
@@ -2321,7 +2581,7 @@ void cpu_eor(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->register_a;
 
-        cpu->register_a = (unsigned char)cpu->register_a ^ cpu->wram[addr];
+        cpu->register_a = (unsigned char)cpu->register_a ^ cpu->wram[addr % 0x1FFFF];
         cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_a);
         cpu->cycles -= 1;
 
@@ -2371,7 +2631,7 @@ void cpu_ora(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->register_a;
         
-        cpu->register_a = (unsigned char)cpu->register_a | cpu->wram[addr];
+        cpu->register_a = (unsigned char)cpu->register_a | cpu->wram[addr % 0x1FFFF];
         cpu_set_negative_u8(&cpu->status, (unsigned char)cpu->register_a);
         cpu->cycles -= 1;
 
@@ -2422,7 +2682,7 @@ void cpu_bit(enum AddressingMode mode, CPU *cpu)
     if (cpu->status & MEMORY_WIDTH)
     {
         unsigned short old = cpu->register_a;
-        result = (unsigned char)cpu->register_a & cpu->wram[addr];
+        result = (unsigned char)cpu->register_a & cpu->wram[addr % 0x1FFFF];
 
         switch (mode)
         {
@@ -2434,7 +2694,7 @@ void cpu_bit(enum AddressingMode mode, CPU *cpu)
                 cpu_set_overflow_flag_u8(
                     &cpu->status, 
                     (unsigned char)cpu->register_a, 
-                    cpu->wram[addr], 
+                    cpu->wram[addr % 0x1FFFF], 
                     (unsigned char)result);
                 break;
             case ABSOLUTE_X:
@@ -2442,7 +2702,7 @@ void cpu_bit(enum AddressingMode mode, CPU *cpu)
                 cpu_set_overflow_flag_u8(
                     &cpu->status, 
                     (unsigned char)cpu->register_a, 
-                    cpu->wram[addr], 
+                    cpu->wram[addr % 0x1FFFF], 
                     (unsigned char)result);
 
                     if ((old >> 8) != (result >> 8))
@@ -2491,8 +2751,8 @@ void cpu_trb(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->status & MEMORY_WIDTH)
     {
-        result = (unsigned char)cpu->register_a & cpu->wram[addr];
-        cpu->wram[addr] &= (unsigned char)~cpu->register_a;
+        result = (unsigned char)cpu->register_a & cpu->wram[addr % 0x1FFFF];
+        cpu->wram[addr % 0x1FFFF] &= (unsigned char)~cpu->register_a;
         cpu->cycles -= 2;
     }
     else
@@ -2516,8 +2776,8 @@ void cpu_tsb(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->status & MEMORY_WIDTH)
     {
-        result = (unsigned char)cpu->register_a & cpu->wram[addr];
-        cpu->wram[addr] |= (unsigned char)cpu->register_a;
+        result = (unsigned char)cpu->register_a & cpu->wram[addr % 0x1FFFF];
+        cpu->wram[addr % 0x1FFFF] |= (unsigned char)cpu->register_a;
         cpu->cycles -= 2;
     }
     else
@@ -2551,9 +2811,9 @@ void cpu_asl(enum AddressingMode mode, CPU *cpu)
         {
             unsigned int addr = cpu_get_operand_address(cpu, mode);
 
-            old_bits = cpu->wram[addr];
-            cpu->wram[addr] = cpu->wram[addr] << 1;
-            result = cpu->wram[addr];
+            old_bits = cpu->wram[addr % 0x1FFFF];
+            cpu->wram[addr] = cpu->wram[addr % 0x1FFFF] << 1;
+            result = cpu->wram[addr % 0x1FFFF];
 
             cpu->cycles -= 2;
         }
@@ -2616,10 +2876,10 @@ void cpu_lsr(enum AddressingMode mode, CPU *cpu)
         {
             unsigned int addr = cpu_get_operand_address(cpu, mode);
 
-            old_bits = cpu->wram[addr];
-            cpu->wram[addr] >>= 1;
-            cpu->wram[addr] &= 0b01111111;
-            result = cpu->wram[addr];
+            old_bits = cpu->wram[addr % 0x1FFFF];
+            cpu->wram[addr % 0x1FFFF] >>= 1;
+            cpu->wram[addr % 0x1FFFF] &= 0b01111111;
+            result = cpu->wram[addr % 0x1FFFF];
 
             cpu->cycles -= 2;
         }
@@ -2689,12 +2949,12 @@ void cpu_rol(enum AddressingMode mode, CPU *cpu)
         {
             unsigned int addr = cpu_get_operand_address(cpu, mode);
 
-            old_bits = cpu->wram[addr];
-            shift = cpu->wram[addr] << 1;
-            rotate = cpu->wram[addr] >> 7;
+            old_bits = cpu->wram[addr % 0x1FFFF];
+            shift = cpu->wram[addr % 0x1FFFF] << 1;
+            rotate = cpu->wram[addr % 0x1FFFF] >> 7;
 
-            cpu->wram[addr] = (unsigned char)(shift | rotate);
-            result = &cpu->wram[addr];
+            cpu->wram[addr % 0x1FFFF] = (unsigned char)(shift | rotate);
+            result = &cpu->wram[addr % 0x1FFFF];
 
             cpu->cycles -= 2;
         }
@@ -2785,12 +3045,12 @@ void cpu_ror(enum AddressingMode mode, CPU *cpu)
         {
             unsigned int addr = cpu_get_operand_address(cpu, mode);
 
-            old_bits = cpu->wram[addr];
-            shift = cpu->wram[addr] >> 1;
-            rotate = cpu->wram[addr] << 8;
+            old_bits = cpu->wram[addr % 0x1FFFF];
+            shift = cpu->wram[addr % 0x1FFFF] >> 1;
+            rotate = cpu->wram[addr % 0x1FFFF] << 8;
 
-            cpu->wram[addr] = shift | rotate;
-            result = cpu->wram[addr];
+            cpu->wram[addr % 0x1FFFF] = shift | rotate;
+            result = cpu->wram[addr % 0x1FFFF];
 
             cpu->cycles -= 2;
         }
@@ -2865,7 +3125,7 @@ void cpu_bcc(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->program_counter + 1;
 
-        cpu->program_counter += (char)cpu->wram[addr];
+        cpu->program_counter += (char)cpu->wram[addr % 0x1FFFF];
         cpu->cycles += 1;
 
         if (cpu->emulation_mode)
@@ -2883,7 +3143,7 @@ void cpu_bcs(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->program_counter + 1;
 
-        cpu->program_counter += (char)cpu->wram[addr];
+        cpu->program_counter += (char)cpu->wram[addr % 0x1FFFF];
         cpu->cycles += 1;
 
         if (cpu->emulation_mode)
@@ -2901,7 +3161,7 @@ void cpu_beq(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->program_counter + 1;
 
-        cpu->program_counter += (char)cpu->wram[addr];
+        cpu->program_counter += (char)cpu->wram[addr % 0x1FFFF];
         cpu->cycles += 1;
 
         if (cpu->emulation_mode)
@@ -2919,7 +3179,7 @@ void cpu_bmi(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->program_counter + 1;
 
-        cpu->program_counter += (char)cpu->wram[addr];
+        cpu->program_counter += (char)cpu->wram[addr % 0x1FFFF];
         cpu->cycles += 1;
 
         if (cpu->emulation_mode)
@@ -2937,7 +3197,7 @@ void cpu_bne(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->program_counter + 1;
 
-        cpu->program_counter += (char)cpu->wram[addr];
+        cpu->program_counter += (char)cpu->wram[addr % 0x1FFFF];
         cpu->cycles += 1;
 
         if (cpu->emulation_mode)
@@ -2955,7 +3215,7 @@ void cpu_bpl(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->program_counter + 1;
 
-        cpu->program_counter += (char)cpu->wram[addr];
+        cpu->program_counter += (char)cpu->wram[addr % 0x1FFFF];
         cpu->cycles += 1;
 
         if (cpu->emulation_mode)
@@ -2970,7 +3230,7 @@ void cpu_bra(enum AddressingMode mode, CPU *cpu)
     unsigned int addr = cpu_get_operand_address(cpu, mode);
     unsigned short old = cpu->program_counter + 1;
 
-    cpu->program_counter += (char)cpu->wram[addr];
+    cpu->program_counter += (char)cpu->wram[addr % 0x1FFFF];
 
     if (cpu->emulation_mode)
     {
@@ -2986,7 +3246,7 @@ void cpu_bvc(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->program_counter + 1;
 
-        cpu->program_counter += (char)cpu->wram[addr];
+        cpu->program_counter += (char)cpu->wram[addr % 0x1FFFF];
         cpu->cycles += 1;
 
         if (cpu->emulation_mode)
@@ -3004,7 +3264,7 @@ void cpu_bvs(enum AddressingMode mode, CPU *cpu)
     {
         unsigned short old = cpu->program_counter + 1;
 
-        cpu->program_counter += (char)cpu->wram[addr];
+        cpu->program_counter += (char)cpu->wram[addr % 0x1FFFF];
         cpu->cycles += 1;
 
         if (cpu->emulation_mode)
@@ -3058,7 +3318,7 @@ void cpu_brk(enum AddressingMode mode, CPU *cpu)
 {
     if (cpu->emulation_mode)
     {
-        cpu_mem_write_u16(cpu, (cpu->stack_pointer - 1) % 0x0100, cpu->program_counter + 1);
+        cpu_mem_write_u16(cpu, (cpu->stack_pointer - 1) % 0x0100, cpu->program_counter + 2);
         cpu->stack_pointer = (cpu->stack_pointer - 2) % 0x0100;
         cpu->status |= BREAK_FLAG;
         cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
@@ -3070,11 +3330,11 @@ void cpu_brk(enum AddressingMode mode, CPU *cpu)
     {
         cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->program_bank);
         cpu->stack_pointer -= 1;
-        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 2);
         cpu->stack_pointer -= 2;
         cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
         cpu->stack_pointer -= 1;
-        cpu->program_counter = cpu_mem_read_u16(cpu, 0x00FFE6);
+        cpu->program_counter = cpu_mem_read_u16(cpu, 0xFFE6);
     }
 
     // turn on interrupt flag
@@ -3087,7 +3347,7 @@ void cpu_cop(enum AddressingMode mode, CPU *cpu)
 {
     if (cpu->emulation_mode)
     {
-        cpu_mem_write_u16(cpu, (cpu->stack_pointer - 1) % 0x0100, cpu->program_counter + 1);
+        cpu_mem_write_u16(cpu, (cpu->stack_pointer - 1) % 0x0100, cpu->program_counter + 2);
         cpu->stack_pointer = (cpu->stack_pointer - 2) % 0x0100;
         cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
         cpu->stack_pointer = (cpu->stack_pointer - 1) % 0x0100;
@@ -3098,7 +3358,7 @@ void cpu_cop(enum AddressingMode mode, CPU *cpu)
     {
         cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->program_bank);
         cpu->stack_pointer -= 1;
-        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 1);
+        cpu_mem_write_u16(cpu, cpu->stack_pointer - 1, cpu->program_counter + 2);
         cpu->stack_pointer -= 2;
         cpu_mem_write_u8(cpu, cpu->stack_pointer, cpu->status);
         cpu->stack_pointer -= 1;
@@ -3246,12 +3506,12 @@ void cpu_rep(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->emulation_mode)
     {
-        cpu->status = cpu->status & ~cpu->wram[addr];
+        cpu->status = cpu->status & ~cpu->wram[addr % 0x1FFFF];
         cpu->status |= 0b00110000; // turn on memory width and index width
     }
     else
     {
-        cpu->status = cpu->status & ~cpu->wram[addr];
+        cpu->status = cpu->status & ~cpu->wram[addr % 0x1FFFF];
     }
 }
 void cpu_sep(enum AddressingMode mode, CPU *cpu)
@@ -3260,12 +3520,12 @@ void cpu_sep(enum AddressingMode mode, CPU *cpu)
 
     if (cpu->emulation_mode)
     {
-        cpu->status |= cpu->wram[addr];
+        cpu->status |= cpu->wram[addr % 0x1FFFF];
         cpu->status |= 0b00110000; // turn on memory width and index width
     }
     else
     {
-        cpu->status |= cpu->wram[addr];
+        cpu->status |= cpu->wram[addr % 0x1FFFF];
     }
 }
 
@@ -4028,15 +4288,16 @@ void cpu_interpret(CPU *cpu)
     }
 
     unsigned char operand = cpu_mem_read_u8(cpu, cpu->program_counter);
+                    
+    unsigned long cpu_cycles = cpu->cycles;
 
-    printf("PC:%d OP:%X\n", cpu->program_counter, operand);
+    //printf("PC:%X OP:%X\n", cpu->program_counter, operand);
 
     switch (operand)
     {
         case 0x00:
             cpu_brk(IMPLIED, cpu);
             cpu->cycles += 8;
-            cpu->program_counter += 1;
             break;
         case 0x01:
             cpu_ora(DIRECT_SHORT_X, cpu);
@@ -4046,7 +4307,6 @@ void cpu_interpret(CPU *cpu)
         case 0x02:
             cpu_cop(IMMEDIATE, cpu);
             cpu->cycles += 8;
-            cpu->program_counter += 2;
             break;
         case 0x03:
             cpu_ora(STACK_S, cpu);
@@ -4081,7 +4341,7 @@ void cpu_interpret(CPU *cpu)
         case 0x09:
             cpu_ora(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH ? 1 : 0);
             break;
         case 0x0A:
             cpu_asl(ACCUMULATOR, cpu);
@@ -4241,7 +4501,7 @@ void cpu_interpret(CPU *cpu)
         case 0x29:
             cpu_and(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH ? 1 : 0);
             break;
         case 0x2A:
             cpu_rol(ACCUMULATOR, cpu);
@@ -4401,7 +4661,7 @@ void cpu_interpret(CPU *cpu)
         case 0x49:
             cpu_eor(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH ? 1 : 0);
             break;
         case 0x4A:
             cpu_lsr(ACCUMULATOR, cpu);
@@ -4561,7 +4821,7 @@ void cpu_interpret(CPU *cpu)
         case 0x69:
             cpu_adc(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH ? 1 : 0);
             break;
         case 0x6A:
             cpu_ror(ACCUMULATOR, cpu);
@@ -4721,7 +4981,7 @@ void cpu_interpret(CPU *cpu)
         case 0x89:
             cpu_bit(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH ? 1 : 0);
             break;
         case 0x8A:
             cpu_txa(IMPLIED, cpu);
@@ -4836,7 +5096,7 @@ void cpu_interpret(CPU *cpu)
         case 0xA0:
             cpu_ldy(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH ? 1 : 0);
             break;
         case 0xA1:
             cpu_lda(DIRECT_SHORT_X, cpu);
@@ -4846,7 +5106,7 @@ void cpu_interpret(CPU *cpu)
         case 0xA2:
             cpu_ldx(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH ? 1 : 0);
             break;
         case 0xA3:
             cpu_lda(STACK_S, cpu);
@@ -4881,7 +5141,7 @@ void cpu_interpret(CPU *cpu)
         case 0xA9:
             cpu_lda(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH ? 1 : 0);
             break;
         case 0xAA:
             cpu_tax(IMPLIED, cpu);
@@ -4996,7 +5256,7 @@ void cpu_interpret(CPU *cpu)
         case 0xC0:
             cpu_cpy(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH ? 1 : 0);
             break;
         case 0xC1:
             cpu_cmp(DIRECT_SHORT_X, cpu);
@@ -5041,7 +5301,7 @@ void cpu_interpret(CPU *cpu)
         case 0xC9:
             cpu_cmp(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH ? 1 : 0);
             break;
         case 0xCA:
             cpu_dex(IMPLIED, cpu);
@@ -5156,7 +5416,7 @@ void cpu_interpret(CPU *cpu)
         case 0xE0:
             cpu_cpx(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & INDEX_WIDTH ? 1 : 0);
             break;
         case 0xE1:
             cpu_sbc(DIRECT_SHORT_X, cpu);
@@ -5201,7 +5461,7 @@ void cpu_interpret(CPU *cpu)
         case 0xE9:
             cpu_sbc(IMMEDIATE, cpu);
             cpu->cycles += 3;
-            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH);
+            cpu->program_counter += 3 - (cpu->status & MEMORY_WIDTH ? 1 : 0);
             break;
         case 0xEA:
             cpu_nop(IMPLIED);
@@ -5316,36 +5576,50 @@ void cpu_interpret(CPU *cpu)
     }
 
     // check for interrupts
-    if (cpu->cycles % 32 == 0)
+
+    unsigned char   nmi_before = cpu->bus.ppu.nmi_vblank, 
+                    op_cycles = cpu->cycles - cpu_cycles;
+    
+    cpu->bus.ppu.dot_cycles += op_cycles * 4;
+
+    if (cpu->bus.ppu.dot_cycles >= 341)
     {
-        cpu->bus.ppu.dot_cycles += 1;
+        cpu->bus.ppu.dot_cycles -= 341;
+        cpu->bus.ppu.scanline += 1;
 
-        if (cpu->bus.ppu.dot_cycles == 341)
+        if (cpu->bus.ppu.scanline == 241)
         {
-            cpu->bus.ppu.dot_cycles = 0;
-            cpu->bus.ppu.scanline += 1;
+            cpu->rdnmi |= 0b10000000;
 
-            if (cpu->bus.ppu.scanline == 241)
-            {
-                cpu->rdnmi |= 0b10000000;
+            if (cpu->nmitimen & 0b10000000)
+                cpu->bus.ppu.nmi_vblank = 1;
+        }
 
-                if (cpu->nmitimen & 0b10000000)
-                    cpu->bus.ppu.nmi_vblank = 1;
-            }
-
-            if (cpu->bus.ppu.scanline == 262)
-            {
-                cpu->bus.ppu.scanline = 0;
-                cpu->bus.ppu.nmi_vblank = 0;
-                cpu->rdnmi &= 0b01111111;
-            }
+        if (cpu->bus.ppu.scanline == 262)
+        {
+            cpu->bus.ppu.scanline = 0;
+            cpu->bus.ppu.nmi_vblank = 0;
+            cpu->bus.ppu.nmi_write = 0;
+            cpu->rdnmi &= 0b01111111;
         }
     }
+
+    if (cpu->hdmaen & 0b1) dma_hdma_write(cpu, 0);
+    if (cpu->hdmaen & 0b10) dma_hdma_write(cpu, 1);
+    if (cpu->hdmaen & 0b100) dma_hdma_write(cpu, 2);
+    if (cpu->hdmaen & 0b1000) dma_hdma_write(cpu, 3);
+    if (cpu->hdmaen & 0b10000) dma_hdma_write(cpu, 4);
+    if (cpu->hdmaen & 0b100000) dma_hdma_write(cpu, 5);
+    if (cpu->hdmaen & 0b1000000) dma_hdma_write(cpu, 6);
+    if (cpu->hdmaen & 0b10000000) dma_hdma_write(cpu, 7);
+    
+
+    if (!nmi_before && cpu->bus.ppu.nmi_vblank)
+        cpu_callback();
 }
 
 void cpu_init(CPU *cpu)
 {
-    
     cpu->htimer = 0x1FF;
     cpu->vtimer = 0x1FF;
 
@@ -5360,6 +5634,27 @@ void cpu_init(CPU *cpu)
     cpu->mdmaen = 0;
     cpu->hdmaen = 0;
     cpu->nmitimen = 0;
-    cpu->program_counter = cpu_mem_read_u16(cpu, 0xFFFC);
+
+    cpu->register_a = 0;
+    cpu->register_x = 0;
+    cpu->register_y = 0;
+    cpu->register_direct = 0;
+    cpu->data_bank = 0;
+    cpu->program_bank = 0;
+
     cpu->emulation_mode = 1;
+
+    // turn off carry flag and turn on memory and index width flags
+    cpu->status &= 0b11111110;
+    cpu->status |= 0b00110000;
+
+    // force high byte of x and y registers to zero
+    cpu->register_x &= 0x00FF;
+    cpu->register_y &= 0x00FF;
+
+    // force high byte of stack pointer to 01
+    cpu->stack_pointer &= 0x00FF;
+    cpu->stack_pointer |= 0x0100;
+
+    cpu->program_counter = cpu_mem_read_u16(cpu, 0xFFFC);
 }

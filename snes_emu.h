@@ -162,7 +162,7 @@ typedef struct
     JOYPAD              joypad[4];
     PPU                 ppu;
 
-    unsigned char       *rom_buffer;
+    unsigned char       *rom_buffer, rom_type;
 } BUS;
 
 typedef struct 
@@ -191,6 +191,8 @@ extern void             rom_load(BUS*);
 
 extern unsigned char    dma_mem_read(BUS*, unsigned int addr);
 extern void             dma_mem_write(BUS*, unsigned int addr, unsigned char data);
+extern void             dma_dma_write(CPU*, unsigned char channel);
+extern void             dma_hdma_write(CPU*, unsigned char channel);
 
 extern void             frame_set_pixel(unsigned char frame_data[], short x, short y, unsigned char rgb[3]);
 
@@ -367,5 +369,5 @@ extern void             cpu_set_negative_u8(unsigned char *status, unsigned char
 extern void             cpu_set_negative_u16(unsigned char *status, unsigned short result);
 
 extern void             cpu_interpret(CPU*);
-
 extern void             cpu_init(CPU*);
+extern void             cpu_callback();

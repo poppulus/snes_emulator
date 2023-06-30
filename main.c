@@ -87,14 +87,16 @@ void render()
     glFlush();
 }
 
-void loop()
+void cpu_callback()
 {
-    input();
-
-    cpu_interpret(&cpu);
-
     ppu_render(&cpu.bus.ppu);
     render();
+    input();
+}
+
+void loop()
+{
+    cpu_interpret(&cpu);
 }
 
 int main(int argc, char *argv[])
@@ -131,9 +133,7 @@ int main(int argc, char *argv[])
     glutMainLoop();
 
     if (cpu.bus.rom_buffer != NULL)
-    {
         free(cpu.bus.rom_buffer);
-    }
 
     glDeleteTextures(1, &texture);
 
